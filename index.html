@@ -187,7 +187,7 @@ function init3D(){
   renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.outputEncoding=THREE.sRGBEncoding;
-  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1; renderer.physicallyCorrectLights=true;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.2;
   renderer.setClearColor(0x111111,1);
   scene3=new THREE.Scene(); scene3.background=new THREE.Color(0x111111);
   camera=new THREE.PerspectiveCamera(38,W/H,0.01,100); updateCam();
