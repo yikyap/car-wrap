@@ -143,7 +143,7 @@ function applyMat(){
   const col=new THREE.Color(st.color.hex);
   bodyMeshes.forEach(mesh=>{
     const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];
-    mats.forEach(m=>{ if(m&&(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial)){ m.color.set(col); m.roughness=st.finish.r; m.metalness=st.finish.m; m.needsUpdate=true; }});
+    mats.forEach(m=>{ if(m&&m.name==='primary'){ m.color.set(col); m.map=null; m.roughness=st.finish.r; m.metalness=st.finish.m; m.needsUpdate=true; }});
   });
 }
 
@@ -211,44 +211,14 @@ function loadModel(){
       model.position.sub(center.multiplyScalar(3.2/Math.max(size.x,size.y,size.z)));
       const box2=new THREE.Box3().setFromObject(model);
       model.position.y-=box2.min.y;
-      // Collect all meshes with their info for body panel detection
-      const allMeshInfo=[];
+      // Body panels use material "primary" (roughness ~0.28) — the car paint
       model.traverse(child=>{
         if(!child.isMesh) return;
         child.castShadow=true; child.receiveShadow=true;
         const mats=Array.isArray(child.material)?child.material:[child.material];
-        mats.forEach(m=>{
-          const c=m.color||{r:0,g:0,b:0};
-          const lum=c.r*0.299+c.g*0.587+c.b*0.114;
-          const name=(child.name||'').toLowerCase();
-          const mname=(m.name||'').toLowerCase();
-          console.log('MESH:',child.name,'MAT:',m.name,'color:',c.r.toFixed(2),c.g.toFixed(2),c.b.toFixed(2),'lum:',lum.toFixed(2),'metal:',m.metalness,'rough:',m.roughness,'transparent:',m.transparent,'opacity:',m.opacity);
-          allMeshInfo.push({mesh:child, mat:m, name, mname, lum});
-        });
-      });
-      // Identify body panels: look for meshes whose name or material name suggests body/paint
-      // Common patterns: "body", "paint", "car_body", "exterior", "shell", "hood", "door", "fender", "bumper", "trunk"
-      const bodyPattern=/body|paint|shell|hood|fender|bumper|trunk|door|quarter|roof|pillar|spoiler|skirt|panel|exterior|kaross/i;
-      const excludePattern=/glass|window|windshield|tire|tyre|wheel|rim|brake|caliper|light|lamp|lens|interior|seat|dash|steer|mirror_glass|chrome|logo|badge|license|plate|rubber|seal|wiper|antenna|grille|grill|screen|display/i;
-      model.traverse(child=>{
-        if(!child.isMesh) return;
-        const name=(child.name||'').toLowerCase();
-        const mats=Array.isArray(child.material)?child.material:[child.material];
         let isBody=false;
         mats.forEach(m=>{
-          const mname=(m.name||'').toLowerCase();
-          const combined=name+' '+mname;
-          // Check by name first
-          if(bodyPattern.test(combined)&&!excludePattern.test(combined)){ isBody=true; return; }
-          // Fallback: large white/light-colored non-transparent non-chrome meshes are likely body
-          if(!m.isMeshStandardMaterial&&!m.isMeshPhysicalMaterial) return;
-          const c=m.color||{r:0,g:0,b:0};
-          const lum=c.r*0.299+c.g*0.587+c.b*0.114;
-          const isGlass=m.transparent&&m.opacity<0.9;
-          const isDark=lum<0.05;
-          const isChrome=m.metalness>0.9&&m.roughness<0.1;
-          // If it's a bright, opaque, non-chrome material — likely paintable body
-          if(lum>0.5&&!isGlass&&!isChrome&&!excludePattern.test(combined)) isBody=true;
+          if(m.name==='primary') isBody=true;
         });
         if(isBody) bodyMeshes.push(child);
       });
