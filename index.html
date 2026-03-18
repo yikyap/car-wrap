@@ -139,19 +139,25 @@ function updateBadge() { document.getElementById('badge').textContent = st.color
 function updatePrice() { document.getElementById('pv').textContent = '$' + (2200 + st.finish.add).toLocaleString(); }
 
 // --- Dynamic slide management ---
-function buildSlides(count) {
-  // Remove existing slides
-  carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
-  // Clamp to valid index for new slide count
+// Create slides offscreen, return them for painting before DOM insertion
+function createSlides(count) {
   const preserved = Math.min(currentSlide, count - 1);
+  const newSlides = [];
   for (let i = 0; i < count; i++) {
     const div = document.createElement('div');
     div.className = 'slide' + (i === preserved ? ' active' : '');
     div.dataset.idx = i;
     div.innerHTML = '<canvas></canvas>';
-    // Insert before arrows
-    carouselEl.insertBefore(div, carouselEl.querySelector('.arrow-l'));
+    newSlides.push(div);
   }
+  return { slides: newSlides, preserved };
+}
+
+// Swap painted slides into the DOM atomically
+function commitSlides(newSlides, preserved, count) {
+  carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
+  const anchor = carouselEl.querySelector('.arrow-l');
+  newSlides.forEach(s => carouselEl.insertBefore(s, anchor));
   activeSlideCount = count;
   currentSlide = preserved;
   buildDots(count);
@@ -195,29 +201,44 @@ document.addEventListener('keydown', e => {
 });
 
 // --- Color switching ---
-function switchColor(color) {
-  if (color.images) {
-    // Real photos — load them directly
-    usingRealPhotos = true;
-    buildSlides(color.images.length);
-    const slides = carouselEl.querySelectorAll('.slide');
-    color.images.forEach((src, i) => {
+// Preload cache so repeat selections are instant
+const imgCache = {};
+function preloadImages(srcs) {
+  return Promise.all(srcs.map(src => {
+    if (imgCache[src]) return Promise.resolve(imgCache[src]);
+    return new Promise(resolve => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = src;
-      img.onload = () => {
+      img.onload = () => { imgCache[src] = img; resolve(img); };
+    });
+  }));
+}
+
+function switchColor(color) {
+  if (color.images) {
+    preloadImages(color.images).then(imgs => {
+      const { slides, preserved } = createSlides(color.images.length);
+      // Paint canvases while still offscreen
+      imgs.forEach((img, i) => {
         const canvas = slides[i].querySelector('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-      };
+      });
+      // Now swap into DOM — fully painted, no flash
+      usingRealPhotos = true;
+      commitSlides(slides, preserved, color.images.length);
     });
   } else {
-    // Recolor mode — use base white images
     if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
-      usingRealPhotos = false;
-      buildSlides(BASE_IMAGES.length);
-      initBaseSlides();
+      preloadImages(BASE_IMAGES).then(imgs => {
+        const { slides, preserved } = createSlides(BASE_IMAGES.length);
+        // Paint + build masks offscreen, then commit
+        usingRealPhotos = false;
+        commitSlides(slides, preserved, BASE_IMAGES.length);
+        initBaseSlides();
+      });
     } else {
       applyAllColors();
     }
@@ -304,7 +325,8 @@ function applyAllColors() {
 }
 
 // Initialize with base white images
-buildSlides(BASE_IMAGES.length);
+const initResult = createSlides(BASE_IMAGES.length);
+commitSlides(initResult.slides, initResult.preserved, BASE_IMAGES.length);
 initBaseSlides();
 </script>
 </body>
