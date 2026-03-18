@@ -174,8 +174,8 @@ function init3D(){
   camera=new THREE.PerspectiveCamera(38,W/H,0.01,100); updateCam();
   scene3.add(new THREE.AmbientLight(0xffffff,0.5));
   const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(4,8,5); key.castShadow=true; key.shadow.mapSize.setScalar(2048); scene3.add(key);
-  scene3.add(Object.assign(new THREE.DirectionalLight(0x6080ff,0.7),{position:new THREE.Vector3(-5,3,-4)}));
-  scene3.add(Object.assign(new THREE.DirectionalLight(0xffffff,1.1),{position:new THREE.Vector3(1,5,-7)}));
+  const fill=new THREE.DirectionalLight(0x6080ff,0.7); fill.position.set(-5,3,-4); scene3.add(fill);
+  const rim=new THREE.DirectionalLight(0xffffff,1.1); rim.position.set(1,5,-7); scene3.add(rim);
   const gnd=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.85,metalness:0.1}));
   gnd.rotation.x=-Math.PI/2; gnd.position.y=-0.02; gnd.receiveShadow=true; scene3.add(gnd); scene3.gnd=gnd;
 
