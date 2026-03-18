@@ -159,7 +159,8 @@ function applyMat(){
       m.metalness=st.finish.m;
       m.clearcoat=st.finish.cc;
       m.clearcoatRoughness=st.finish.ccr;
-      m.envMapIntensity=st.finish.m>0.9?2.5:1.2;
+      m.envMap=envMap;
+      m.envMapIntensity=st.finish.m>0.9?2.5:1.5;
       m.needsUpdate=true;
     });
   });
@@ -211,13 +212,12 @@ function init3D(){
   const panel2=new THREE.Mesh(new THREE.PlaneGeometry(8,3),new THREE.MeshBasicMaterial({color:0xccddff,side:THREE.DoubleSide}));
   panel2.position.set(-6,5,4); panel2.lookAt(0,0,0); envScene.add(panel2);
   envMap=pmrem.fromScene(envScene,0,0.1,100).texture;
-  scene3.environment=envMap;
   pmrem.dispose();
 
-  scene3.add(new THREE.AmbientLight(0xffffff,0.35));
-  const key=new THREE.DirectionalLight(0xffffff,1.8); key.position.set(4,8,5); key.castShadow=true; key.shadow.mapSize.setScalar(2048); scene3.add(key);
-  const fill=new THREE.DirectionalLight(0x6080ff,0.6); fill.position.set(-5,3,-4); scene3.add(fill);
-  const rim=new THREE.DirectionalLight(0xffffff,0.9); rim.position.set(1,5,-7); scene3.add(rim);
+  scene3.add(new THREE.AmbientLight(0xffffff,0.5));
+  const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(4,8,5); key.castShadow=true; key.shadow.mapSize.setScalar(2048); scene3.add(key);
+  const fill=new THREE.DirectionalLight(0x6080ff,0.7); fill.position.set(-5,3,-4); scene3.add(fill);
+  const rim=new THREE.DirectionalLight(0xffffff,1.1); rim.position.set(1,5,-7); scene3.add(rim);
   const gnd=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x111111,roughness:0.92,metalness:0.05,envMapIntensity:0.3}));
   gnd.rotation.x=-Math.PI/2; gnd.position.y=-0.02; gnd.receiveShadow=true; scene3.add(gnd); scene3.gnd=gnd;
 
