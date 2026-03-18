@@ -186,8 +186,13 @@ function createMask(img) {
   for (let i = 0; i < alpha.length; i++) {
     const r = id.data[i * 4], g = id.data[i * 4 + 1], b = id.data[i * 4 + 2];
     const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-    // Ramp: pixels below 0.55 lum = 0 (no color), above 0.78 = full color
-    alpha[i] = Math.round(Math.max(0, Math.min(1, (lum - 0.55) / 0.23)) * 255);
+    // Only target bright white body panels; exclude wheels, chrome, floor
+    // Also check if pixel is neutral (low saturation) — body panels are pure white
+    const maxC = Math.max(r, g, b), minC = Math.min(r, g, b);
+    const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
+    // High luminance + low saturation = white body panel
+    const bodyScore = (lum > 0.73 && sat < 0.12) ? Math.min(1, (lum - 0.73) / 0.15) : 0;
+    alpha[i] = Math.round(bodyScore * 255);
   }
   return { alpha, width: c.width, height: c.height };
 }
