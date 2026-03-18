@@ -142,16 +142,18 @@ function updatePrice() { document.getElementById('pv').textContent = '$' + (2200
 function buildSlides(count) {
   // Remove existing slides
   carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
+  // Clamp to valid index for new slide count
+  const preserved = Math.min(currentSlide, count - 1);
   for (let i = 0; i < count; i++) {
     const div = document.createElement('div');
-    div.className = 'slide' + (i === 0 ? ' active' : '');
+    div.className = 'slide' + (i === preserved ? ' active' : '');
     div.dataset.idx = i;
     div.innerHTML = '<canvas></canvas>';
     // Insert before arrows
     carouselEl.insertBefore(div, carouselEl.querySelector('.arrow-l'));
   }
   activeSlideCount = count;
-  currentSlide = 0;
+  currentSlide = preserved;
   buildDots(count);
 }
 
@@ -160,7 +162,7 @@ function buildDots(count) {
   dotsEl.innerHTML = '';
   for (let i = 0; i < count; i++) {
     const d = document.createElement('button');
-    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.className = 'dot' + (i === currentSlide ? ' active' : '');
     d.onclick = () => goTo(i);
     dotsEl.appendChild(d);
   }
