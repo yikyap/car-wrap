@@ -176,7 +176,7 @@ function init3D(){
   const key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(4,8,5); key.castShadow=true; key.shadow.mapSize.setScalar(2048); scene3.add(key);
   const fill=new THREE.DirectionalLight(0x6080ff,0.7); fill.position.set(-5,3,-4); scene3.add(fill);
   const rim=new THREE.DirectionalLight(0xffffff,1.1); rim.position.set(1,5,-7); scene3.add(rim);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.85,metalness:0.1}));
+  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x111111,roughness:0.92,metalness:0.05}));
   gnd.rotation.x=-Math.PI/2; gnd.position.y=-0.02; gnd.receiveShadow=true; scene3.add(gnd); scene3.gnd=gnd;
 
   canvas.addEventListener('mousedown',e=>{drag=true;prev={x:e.clientX,y:e.clientY};lastInt=Date.now();e.preventDefault();});
@@ -217,9 +217,23 @@ function loadModel(){
       model.traverse(child=>{
         if(!child.isMesh) return;
         child.castShadow=true; child.receiveShadow=true;
+        // Smooth out faceted geometry
+        if(child.geometry) child.geometry.computeVertexNormals();
         if(child.material){
           const mats=Array.isArray(child.material)?child.material:[child.material];
-          mats.forEach(m=>{ if(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial) bodyMeshes.push(child); });
+          let isBody=false;
+          mats.forEach(m=>{
+            if(!m.isMeshStandardMaterial&&!m.isMeshPhysicalMaterial) return;
+            const c=m.color;
+            const lum=c.r*0.299+c.g*0.587+c.b*0.114;
+            const isGlass=m.transparent||(m.opacity!=null&&m.opacity<0.9);
+            const isDark=lum<0.08;
+            const isChrome=m.metalness>0.85&&m.roughness<0.15;
+            const name=(child.name||'').toLowerCase()+(m.name||'').toLowerCase();
+            const isWheelOrTire=/wheel|tire|tyre|rim|brake|glass|window|windshield|light|lamp|lens|interior|seat|dash|steer/i.test(name);
+            if(!isGlass&&!isDark&&!isChrome&&!isWheelOrTire) isBody=true;
+          });
+          if(isBody) bodyMeshes.push(child);
         }
       });
       if(!bodyMeshes.length) model.traverse(c=>{ if(c.isMesh) bodyMeshes.push(c); });
