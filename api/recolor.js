@@ -53,15 +53,43 @@ module.exports = async function handler(req, res) {
   const pattern = patternName && patternName !== "None" ? patternName : null;
   const zone = zoneName || "Full body";
 
-  // Build the pattern instruction
-  let patternInstruction = "";
-  if (pattern) {
-    patternInstruction = `
-
-PATTERN: Apply a ${pattern} pattern to the ${zone.toLowerCase()} of the car. The pattern should be integrated into the ${colorName} ${finish} wrap — not a sticker or overlay, but part of the wrap itself. The pattern should follow the car's body contours naturally and look like a professional vinyl wrap application.`;
-  }
-
   try {
+    // Step 1: If pattern requested, generate a precise pattern spec first
+    let patternSpec = "";
+    if (pattern) {
+      const specResult = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are a car wrap designer. A customer wants a ${pattern} pattern applied to the ${zone.toLowerCase()} of their car (${carDescription}) in ${colorName} ${finish}.
+
+Write a very precise, detailed description of exactly how this pattern should look on this specific car. Include:
+- Exact colors used in the pattern (e.g. "dark charcoal gray #333 and matte black #111")
+- Exact dimensions and scale of pattern elements (e.g. "each stripe is 4 inches wide with 2 inch gaps")
+- Exact placement on the car body (e.g. "two parallel stripes running from the center of the front bumper, up the hood center, over the roof center, and down to the rear bumper")
+- How the pattern transitions at body panel edges, curves, and seams
+- What parts of the car are NOT covered by the pattern
+
+Be extremely specific so that 6 different artists could each draw this from a different angle and it would look consistent. Write one detailed paragraph, no bullet points.`,
+              },
+            ],
+          },
+        ],
+      });
+
+      patternSpec =
+        specResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("Pattern spec:", patternSpec);
+    }
+
+    // Step 2: Generate 6 views with the consistent pattern spec
+    const patternInstruction = patternSpec
+      ? `\n\nPATTERN DESIGN (follow this exactly for consistency across all views):\n${patternSpec}`
+      : "";
+
     const results = await Promise.all(
       REFERENCE_IMAGES.map((ref, i) =>
         ai.models.generateContent({
@@ -77,7 +105,7 @@ PATTERN: Apply a ${pattern} pattern to the ${zone.toLowerCase()} of the car. The
 
 ${carDescription}
 
-IMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else about the car identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.${patternInstruction}
+IMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else about the car identical — same make, model, wheels, body shape, and all other details.${patternInstruction}
 
 Use the first image as a reference for the exact camera angle and composition: ${ANGLE_PROMPTS[i]}.
 Use the second image as the exact showroom background — dark studio with subtle center spotlight on dark concrete floor.
