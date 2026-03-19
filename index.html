@@ -430,8 +430,9 @@ async function generateViews() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error || 'Generation failed');
+      let msg = 'Generation failed';
+      try { const err = await resp.json(); msg = err.error || msg; } catch { msg = await resp.text() || msg; }
+      throw new Error(msg);
     }
 
     const { images } = await resp.json();
