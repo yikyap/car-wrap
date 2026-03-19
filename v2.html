@@ -441,6 +441,64 @@ function addMessageWithConfirm(text, carDescription) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function addRecolorConfirm(text, colorName, finishName) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = text;
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Yes, show me!';
+  yesBtn.onclick = async () => {
+    yesBtn.disabled = true; noBtn.disabled = true;
+    yesBtn.textContent = 'Generating...';
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
+    try {
+      const preset = COLORS.find(c => c.name.toLowerCase() === colorName.toLowerCase());
+      const color = preset || { name: colorName, hex: '#888888' };
+      if (finishName) st.finish = FINISHES.find(f => f.name === finishName) || st.finish;
+      st.color = color;
+      updateBadge();
+      if (customCarDescription) {
+        await recolorCustomCar(color);
+      } else {
+        switchColor(color);
+      }
+      addMessage('Here it is! Want to try another color?', 'bot');
+      chatHistory.push({ role: 'model', parts: [{ text: 'Here it is! Want to try another color?' }] });
+    } catch (err) {
+      addMessage('Recolor failed: ' + err.message, 'bot');
+    }
+    btns.remove();
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Something else';
+  noBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Actually, suggest something else.' }] });
+    addMessage('Something else', 'user');
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: chatHistory }) })
+      .then(r => r.json()).then(data => {
+        if (data.reply) {
+          const recolorAction = (data.actions || []).find(a => a.type === 'recolor_car');
+          if (recolorAction) {
+            addRecolorConfirm(data.reply, recolorAction.colorName, recolorAction.finishName);
+          } else {
+            addMessage(data.reply, 'bot');
+          }
+          chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+        }
+      });
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 function showTyping() {
   const div = document.createElement('div');
   div.className = 'typing';
@@ -508,32 +566,19 @@ async function sendMessage() {
 
     if (!resp.ok) throw new Error(data.error || 'Chat failed');
 
-    // Show bot reply
+    // Show bot reply with appropriate confirmation buttons
     if (data.reply) {
-      // Check if this is a confirmation with a generate action
       const genAction = (data.actions || []).find(a => a.type === 'generate_car');
+      const recolorAction = (data.actions || []).find(a => a.type === 'recolor_car');
+
       if (genAction) {
         addMessageWithConfirm(data.reply, genAction.carDescription);
+      } else if (recolorAction) {
+        addRecolorConfirm(data.reply, recolorAction.colorName, recolorAction.finishName);
       } else {
         addMessage(data.reply, 'bot');
       }
       chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
-    }
-
-    // Auto-execute recolor actions (no confirmation needed)
-    for (const action of (data.actions || [])) {
-      if (action.type === 'recolor_car') {
-        const preset = COLORS.find(c => c.name.toLowerCase() === action.colorName.toLowerCase());
-        const color = preset || { name: action.colorName, hex: '#888888' };
-        if (action.finishName) st.finish = FINISHES.find(f => f.name === action.finishName) || st.finish;
-        st.color = color;
-        updateBadge();
-        if (customCarDescription) {
-          await recolorCustomCar(color);
-        } else {
-          switchColor(color);
-        }
-      }
     }
   } catch (err) {
     hideTyping();
