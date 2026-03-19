@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Failed to load reference images: " + err.message });
   }
 
-  const { carDescription, colorName, finishName } = req.body;
+  const { carDescription, colorName, finishName, patternName, zoneName } = req.body;
   if (!carDescription || !colorName) {
     return res.status(400).json({ error: "Missing carDescription or colorName" });
   }
@@ -50,6 +50,16 @@ module.exports = async function handler(req, res) {
 
   const ai = new GoogleGenAI({ apiKey });
   const finish = finishName || "Gloss";
+  const pattern = patternName && patternName !== "None" ? patternName : null;
+  const zone = zoneName || "Full body";
+
+  // Build the pattern instruction
+  let patternInstruction = "";
+  if (pattern) {
+    patternInstruction = `
+
+PATTERN: Apply a ${pattern} pattern to the ${zone.toLowerCase()} of the car. The pattern should be integrated into the ${colorName} ${finish} wrap — not a sticker or overlay, but part of the wrap itself. The pattern should follow the car's body contours naturally and look like a professional vinyl wrap application.`;
+  }
 
   try {
     const results = await Promise.all(
@@ -67,7 +77,7 @@ module.exports = async function handler(req, res) {
 
 ${carDescription}
 
-IMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else about the car identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.
+IMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else about the car identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.${patternInstruction}
 
 Use the first image as a reference for the exact camera angle and composition: ${ANGLE_PROMPTS[i]}.
 Use the second image as the exact showroom background — dark studio with subtle center spotlight on dark concrete floor.

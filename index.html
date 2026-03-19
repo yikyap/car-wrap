@@ -73,6 +73,11 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
       <div class="lbl">Finish</div>
       <div class="row" id="fr"></div>
     </div>
+    <div class="card" id="pattern-card">
+      <div class="lbl">Pattern</div>
+      <div class="row" id="pat-row"></div>
+      <div class="row" style="margin-top:6px" id="zone-row"></div>
+    </div>
     <div class="upload-card">
       <div class="lbl">Your car</div>
       <label class="upload-label" id="upload-label" for="car-upload">
@@ -110,9 +115,25 @@ const FINISHES = [
   {name:'Chrome', add:600},
 ];
 
+const PATTERNS = [
+  {name:'None'},
+  {name:'Camo'},
+  {name:'Racing stripes'},
+  {name:'Geometric'},
+  {name:'Carbon fiber'},
+  {name:'Hexagon mesh'},
+];
+const ZONES = [
+  {name:'Full body'},
+  {name:'Hood & roof'},
+  {name:'Lower half'},
+  {name:'Side panels'},
+  {name:'Hood only'},
+];
+
 const BASE_IMAGES = ['./images/1.webp','./images/2.webp','./images/3.webp','./images/4.webp','./images/5.webp'];
 let currentSlide = 0;
-let st = { color: COLORS[0], finish: FINISHES[0] };
+let st = { color: COLORS[0], finish: FINISHES[0], pattern: PATTERNS[0], zone: ZONES[0] };
 const baseSlideData = []; // for recoloring: {origData, mask, canvas, width, height}
 let activeSlideCount = BASE_IMAGES.length;
 let usingRealPhotos = false;
@@ -169,6 +190,38 @@ FINISHES.forEach((f, i) => {
     updatePrice();
   };
   fr.appendChild(b);
+});
+
+// Pattern selectors
+const patRow = document.getElementById('pat-row');
+PATTERNS.forEach((p, i) => {
+  const b = document.createElement('button');
+  b.className = 'pill' + (i === 0 ? ' on' : '');
+  b.textContent = p.name;
+  b.onclick = () => {
+    document.querySelectorAll('#pat-row .pill').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    st.pattern = p;
+    // Show/hide zone row
+    document.getElementById('zone-row').style.display = p.name === 'None' ? 'none' : 'flex';
+    if (customCarDescription && p.name !== 'None') applyPattern();
+  };
+  patRow.appendChild(b);
+});
+
+const zoneRow = document.getElementById('zone-row');
+zoneRow.style.display = 'none';
+ZONES.forEach((z, i) => {
+  const b = document.createElement('button');
+  b.className = 'pill' + (i === 0 ? ' on' : '');
+  b.textContent = z.name;
+  b.onclick = () => {
+    document.querySelectorAll('#zone-row .pill').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    st.zone = z;
+    if (customCarDescription && st.pattern.name !== 'None') applyPattern();
+  };
+  zoneRow.appendChild(b);
 });
 
 function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
@@ -484,7 +537,7 @@ async function generateViews() {
 
 // --- Custom car recoloring ---
 async function recolorCustomCar(color) {
-  const cacheKey = color.name + '|' + st.finish.name;
+  const cacheKey = color.name + '|' + st.finish.name + '|' + st.pattern.name + '|' + st.zone.name;
 
   // Check cache first
   if (recolorCache[cacheKey]) {
@@ -493,7 +546,8 @@ async function recolorCustomCar(color) {
     return;
   }
 
-  showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
+  const patLabel = st.pattern.name !== 'None' ? ' + ' + st.pattern.name : '';
+  showLoading('Generating ' + color.name + ' ' + st.finish.name + patLabel + '...');
 
   try {
     const resp = await fetch('/api/recolor', {
@@ -503,6 +557,8 @@ async function recolorCustomCar(color) {
         carDescription: customCarDescription,
         colorName: color.name,
         finishName: st.finish.name,
+        patternName: st.pattern.name,
+        zoneName: st.zone.name,
       }),
     });
 
@@ -548,7 +604,52 @@ function displayGeneratedImages(images) {
 function updateCustomBadge(color) {
   const desc = customCarDescription || 'Your car';
   const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
-  document.getElementById('badge').textContent = shortDesc + ' · ' + color.name;
+  const patternLabel = st.pattern.name !== 'None' ? ' · ' + st.pattern.name : '';
+  document.getElementById('badge').textContent = shortDesc + ' · ' + color.name + patternLabel;
+}
+
+// --- Pattern application ---
+async function applyPattern() {
+  if (!customCarDescription) return;
+
+  const cacheKey = st.color.name + '|' + st.finish.name + '|' + st.pattern.name + '|' + st.zone.name;
+  if (recolorCache[cacheKey]) {
+    displayGeneratedImages(recolorCache[cacheKey]);
+    updateCustomBadge(st.color);
+    return;
+  }
+
+  showLoading('Generating ' + st.pattern.name + ' on ' + st.zone.name.toLowerCase() + '...');
+
+  try {
+    const resp = await fetch('/api/recolor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carDescription: customCarDescription,
+        colorName: st.color.name,
+        finishName: st.finish.name,
+        patternName: st.pattern.name,
+        zoneName: st.zone.name,
+      }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      let msg = 'Pattern generation failed';
+      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
+      throw new Error(msg);
+    }
+
+    const { images } = JSON.parse(text);
+    recolorCache[cacheKey] = images;
+    displayGeneratedImages(images);
+    updateCustomBadge(st.color);
+  } catch (err) {
+    alert('Pattern generation failed: ' + err.message);
+  } finally {
+    hideLoading();
+  }
 }
 
 // Initialize with base white images
