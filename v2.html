@@ -82,7 +82,12 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   </div>
   <div class="chat-panel">
     <div class="chat-messages" id="chat-messages">
-      <div class="msg bot">Hey! I'm your wrap advisor. What year, make, and model is your car? Feel free to include the color and any other details — or drop in a photo!</div>
+      <div class="msg bot">Hey! I'm your wrap advisor. How would you like to get started?
+        <div class="confirm-btns" id="start-btns" style="margin-top:10px">
+          <button class="confirm-btn yes" onclick="startDescribe()">I'll describe my car</button>
+          <button class="confirm-btn no" onclick="startUpload()">I have a photo</button>
+        </div>
+      </div>
     </div>
     <div class="file-preview" id="file-preview" style="display:none">
       <div class="file-preview-inner">
@@ -658,6 +663,24 @@ async function sendMessage() {
   } finally {
     document.getElementById('chat-send').disabled = false;
   }
+}
+
+function startDescribe() {
+  document.getElementById('start-btns').remove();
+  addMessage('I\'ll describe my car', 'user');
+  addMessage('What year, make, and model is your car? Include the color if you know it!', 'bot');
+  chatHistory.push({ role: 'user', parts: [{ text: "I'll describe my car" }] });
+  chatHistory.push({ role: 'model', parts: [{ text: 'What year, make, and model is your car? Include the color if you know it!' }] });
+  chatInput.focus();
+}
+
+function startUpload() {
+  document.getElementById('start-btns').remove();
+  addMessage('I have a photo', 'user');
+  addMessage('Drop it in! I\'ll analyze it and set everything up.', 'bot');
+  chatHistory.push({ role: 'user', parts: [{ text: 'I have a photo of my car' }] });
+  chatHistory.push({ role: 'model', parts: [{ text: "Drop it in! I'll analyze it and set everything up." }] });
+  document.getElementById('chat-file').click();
 }
 
 // === Init ===
