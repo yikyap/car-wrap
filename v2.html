@@ -421,8 +421,8 @@ function addMessageWithConfirm(text, carDescription) {
     chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
     try {
       await generateFromDescription(carDescription);
-      addMessageWithPalette('Your car is ready! Pick a wrap color or describe your own:');
-      chatHistory.push({ role: 'model', parts: [{ text: 'Your car is ready! What wrap color would you like to see?' }] });
+      addPostGenerateConfirm(carDescription);
+      chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
     } catch (err) {
       addMessage('Generation failed: ' + err.message, 'bot');
     }
@@ -514,6 +514,39 @@ function addMessageWithPalette(text) {
 
   div.appendChild(palette);
   div.appendChild(customRow);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addPostGenerateConfirm(carDescription) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = 'Does this look like your car?';
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Looks great!';
+  yesBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes, looks great!' }] });
+    addMessageWithPalette('Awesome! Now pick a wrap color or describe your own:');
+    chatHistory.push({ role: 'model', parts: [{ text: 'Awesome! Pick a wrap color.' }] });
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Not quite';
+  noBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite, the generated car doesn\'t look right.' }] });
+    addMessage('Not quite', 'user');
+    addMessage('No worries — what needs to change? I can regenerate it.', 'bot');
+    chatHistory.push({ role: 'model', parts: [{ text: 'No worries — what needs to change? I can regenerate it.' }] });
+    chatInput.focus();
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
