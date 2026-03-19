@@ -453,6 +453,7 @@ async function sendMessage() {
     });
     const data = await resp.json();
     hideTyping();
+    console.log('Chat API response:', JSON.stringify(data));
 
     if (!resp.ok) throw new Error(data.error || 'Chat failed');
 
@@ -463,8 +464,10 @@ async function sendMessage() {
     }
 
     // Then execute function calls
+    console.log('Function calls:', data.functionCalls);
     if (data.functionCalls && data.functionCalls.length > 0) {
       for (const fc of data.functionCalls) {
+        console.log('Executing function call:', fc.name, fc.args);
         try {
           await executeFunctionCall(fc);
         } catch (err) {
