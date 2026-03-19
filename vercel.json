@@ -7,6 +7,10 @@
     "api/recolor.js": {
       "maxDuration": 60,
       "includeFiles": "images/{matte-black-*.webp,showroom-bg.webp}"
+    },
+    "api/generate-from-description.js": {
+      "maxDuration": 60,
+      "includeFiles": "images/{matte-black-*.webp,showroom-bg.webp}"
     }
   },
   "rewrites": [

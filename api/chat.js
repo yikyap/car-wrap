@@ -1,38 +1,86 @@
 const { GoogleGenAI } = require("@google/genai");
 
-const SYSTEM_PROMPT = `You are a car wrap advisor chatbot for a wrap visualization tool. Your ONLY job is to help customers visualize wraps on their car.
+const SYSTEM_PROMPT = `You are a car wrap advisor chatbot. Keep all responses to 1-2 sentences. Be casual — think texting, not email.
 
-RULES:
-- Keep ALL responses to 1-2 sentences MAX. Never write paragraphs.
-- Do NOT explain what a car is. Do NOT give car history or specs.
-- Stay focused on WRAPS: colors, finishes, pricing, and the visualizer.
-- When a user tells you their car, acknowledge it briefly and ask what color or finish they want to see, or suggest they upload a photo.
-- When a user wants to see a color, call switch_color immediately.
-- When they want a different finish, call switch_finish immediately.
-- When they upload a photo, call generate_views immediately.
-- When they have a custom car and want a new color, call recolor_car.
-- Be casual and brief. Think texting, not email.
+YOUR FLOW:
+1. First, ask what car they want wrapped.
+2. When they tell you the car (e.g. "Tesla Model 3"), start gathering details one question at a time:
+   - What year?
+   - What's the current body color?
+   - What color are the rims/wheels?
+   - Any special trim, badges, or modifications?
+   Keep each question short and natural. Don't ask all at once.
+3. Once you have enough details (at minimum: make, model, year, current color, rim color), call generate_car to create their car in the showroom. Summarize what you're generating.
+4. After the car is generated, ask what wrap color/finish they'd like to see. Suggest some options.
+5. When they pick a color, call recolor_car immediately.
+6. If they upload a photo instead of describing their car, call generate_views to use their photo directly.
 
-Available colors: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold. You can also do any custom color.
+IMPORTANT: Do NOT ask for information you already have. If they say "2015 BMW 4 series gran coupe" you already have the make, model, and year — just ask about color and rims next.
+
+Available wrap colors: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold. Also any custom color.
 
 Finishes: Gloss ($2,200), Matte ($2,300), Satin ($2,350), Chrome ($2,800).
 
-Quick wrap facts (only share if asked): Gloss lasts 5-7yr, Matte/Satin 3-5yr, Chrome 2-3yr. Hand wash only. Protects original paint. Installation takes 2-5 days. Removable without damage.`;
+Wrap facts (only if asked): Gloss lasts 5-7yr, Matte/Satin 3-5yr, Chrome 2-3yr. Hand wash only. Protects original paint. 2-5 day install. Removable.`;
 
 const TOOLS = [
   {
     functionDeclarations: [
       {
-        name: "switch_color",
+        name: "generate_car",
         description:
-          "Switch the visualizer to show a different wrap color. Use for both preset colors and custom colors.",
+          "Generate 6 showroom views of the customer's car based on their description. Call this once you have enough details about their car (make, model, year, color, rim color).",
+        parameters: {
+          type: "object",
+          properties: {
+            carDescription: {
+              type: "string",
+              description:
+                'A detailed description of the car including make, model, year, body color, rim/wheel color, trim level, and any modifications. E.g. "2015 BMW 4 Series Gran Coupe (F36) in Mineral Grey metallic with 19-inch silver M Sport alloy wheels, M Sport package, black kidney grille"',
+            },
+          },
+          required: ["carDescription"],
+        },
+      },
+      {
+        name: "generate_views",
+        description:
+          "Generate 6 showroom views from a photo the customer uploaded. Call this when they attach a photo of their car.",
+        parameters: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "recolor_car",
+        description:
+          "Change the wrap color and finish on the customer's car. Only call after generate_car or generate_views has been used.",
         parameters: {
           type: "object",
           properties: {
             colorName: {
               type: "string",
-              description:
-                'The color name — either a preset (e.g. "Pearl white", "Matte black") or a custom color description (e.g. "midnight purple metallic")',
+              description: "The wrap color to apply",
+            },
+            finishName: {
+              type: "string",
+              enum: ["Gloss", "Matte", "Satin", "Chrome"],
+              description: "The finish type",
+            },
+          },
+          required: ["colorName"],
+        },
+      },
+      {
+        name: "switch_color",
+        description:
+          "Switch the visualizer to a preset color (before a custom car is generated). Use for browsing the default Tesla Model 3 previews.",
+        parameters: {
+          type: "object",
+          properties: {
+            colorName: {
+              type: "string",
+              description: "The color name from the preset list",
             },
           },
           required: ["colorName"],
@@ -40,8 +88,7 @@ const TOOLS = [
       },
       {
         name: "switch_finish",
-        description:
-          "Switch the wrap finish type. Affects price and appearance.",
+        description: "Switch the wrap finish type.",
         parameters: {
           type: "object",
           properties: {
@@ -54,35 +101,6 @@ const TOOLS = [
           required: ["finishName"],
         },
       },
-      {
-        name: "generate_views",
-        description:
-          "Generate 6 showroom views of the customer's uploaded car. Call this after the user uploads a photo of their car.",
-        parameters: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "recolor_car",
-        description:
-          "Recolor a previously uploaded custom car to a new color and finish. Only works after generate_views has been called.",
-        parameters: {
-          type: "object",
-          properties: {
-            colorName: {
-              type: "string",
-              description: "The color to apply",
-            },
-            finishName: {
-              type: "string",
-              enum: ["Gloss", "Matte", "Satin", "Chrome"],
-              description: "The finish type",
-            },
-          },
-          required: ["colorName"],
-        },
-      },
     ],
   },
 ];
@@ -92,7 +110,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { messages, hasCustomCar } = req.body;
+  const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "Missing messages array" });
   }
@@ -114,7 +132,6 @@ module.exports = async function handler(req, res) {
 
     const parts = result.candidates?.[0]?.content?.parts || [];
 
-    // Extract text and function calls
     let reply = "";
     const functionCalls = [];
 

@@ -70,7 +70,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   </div>
   <div class="chat-panel">
     <div class="chat-messages" id="chat-messages">
-      <div class="msg bot">Hey! I'm your wrap advisor. Upload a photo of your car or ask me about colors, finishes, and pricing. What are you driving?</div>
+      <div class="msg bot">Hey! I'm your wrap advisor. What car are you looking to get wrapped?</div>
     </div>
     <div class="file-preview" id="file-preview" style="display:none">
       <div class="file-preview-inner">
@@ -330,6 +330,21 @@ async function generateViews() {
   } finally { hideLoading(); }
 }
 
+async function generateFromDescription(carDesc) {
+  showLoading('Generating your car in the showroom...');
+  try {
+    const resp = await fetch('/api/generate-from-description', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ carDescription: carDesc }) });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
+    const parsed = JSON.parse(text);
+    await displayGeneratedImages(parsed.images);
+    customCarDescription = carDesc;
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
+    document.getElementById('badge').textContent = shortDesc;
+  } finally { hideLoading(); }
+}
+
 async function recolorCustomCar(color) {
   const cacheKey = color.name + '|' + st.finish.name;
   if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
@@ -474,6 +489,13 @@ async function executeFunctionCall(fc) {
         if (customCarDescription) recolorCustomCar(st.color);
       }
       return 'Switched to ' + (finish ? finish.name : args.finishName);
+    }
+    case 'generate_car': {
+      if (args.carDescription) {
+        await generateFromDescription(args.carDescription);
+        return 'Generating your car';
+      }
+      return null;
     }
     case 'generate_views': {
       if (uploadedPhoto) {
