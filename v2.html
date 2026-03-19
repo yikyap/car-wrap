@@ -82,7 +82,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
     <button class="arrow arrow-l" onclick="nav(-1)">&#8249;</button>
     <button class="arrow arrow-r" onclick="nav(1)">&#8250;</button>
     <div class="dots" id="dots"></div>
-    <div class="badge" id="badge">Pearl white · Gloss</div>
+    <div class="badge" id="badge">Matte black · Tesla Model 3</div>
   </div>
   <div class="chat-panel">
     <div class="chat-messages" id="chat-messages">
@@ -727,9 +727,19 @@ function startUpload() {
 }
 
 // === Init ===
-const initResult = createSlides(BASE_IMAGES.length);
-commitSlides(initResult.slides, initResult.preserved, BASE_IMAGES.length);
-initBaseSlides();
+// Load matte black Tesla as default showcase
+const matteBlackImages = COLORS.find(c => c.name === 'Matte black').images;
+preloadImages(matteBlackImages).then(imgs => {
+  const { slides, preserved } = createSlides(imgs.length);
+  imgs.forEach((img, i) => {
+    const canvas = slides[i].querySelector('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+  });
+  usingRealPhotos = true;
+  commitSlides(slides, preserved, imgs.length);
+});
 
 // Focus chat input
 chatInput.focus();
