@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require("@google/genai");
+const { generateImageWithRetry } = require("./_retry");
 const fs = require("fs");
 const path = require("path");
 
@@ -89,16 +90,11 @@ Respond with ONLY a single paragraph description, no bullet points or labels. Be
     // Step 2: Generate 6 showroom views using the description
     const results = await Promise.all(
       REFERENCE_IMAGES.map((ref, i) =>
-        ai.models.generateContent({
-          model: "gemini-3.1-flash-image-preview",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { inlineData: { data: ref.data, mimeType: ref.mimeType } },
-                { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
-                {
-                  text: `Generate a photorealistic showroom image of the following car:
+        generateImageWithRetry(ai, [
+          { inlineData: { data: ref.data, mimeType: ref.mimeType } },
+          { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
+          {
+            text: `Generate a photorealistic showroom image of the following car:
 
 ${carDescription}
 
@@ -106,11 +102,8 @@ Use the first image as a reference for the exact camera angle and composition: $
 Use the second image as the exact showroom background — dark studio with subtle center spotlight on dark concrete floor.
 
 The car must match the description exactly — same make, model, color, wheels, and all details. The image should look like a professional car photograph, not a rendering. No text or watermarks.`,
-                },
-              ],
-            },
-          ],
-        })
+          },
+        ])
       )
     );
 
