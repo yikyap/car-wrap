@@ -12,19 +12,25 @@ const ANGLE_PROMPTS = [
   "rear three-quarter view from above, looking down at trunk and passenger side",
 ];
 
-// Load background and reference images once at cold start
-const BG_IMAGE = {
-  data: fs.readFileSync(path.join(process.cwd(), "images", "showroom-bg.webp")).toString("base64"),
-  mimeType: "image/webp",
-};
+// Lazy-load images on first request (avoids cold-start crash if paths differ)
+let BG_IMAGE = null;
+let REFERENCE_IMAGES = null;
 
-const REFERENCE_IMAGES = [1, 2, 3, 4, 5, 6].map((i) => {
-  const filePath = path.join(process.cwd(), "images", `matte-black-${i}.webp`);
-  return {
-    data: fs.readFileSync(filePath).toString("base64"),
+function loadImages() {
+  if (REFERENCE_IMAGES) return;
+
+  const imgDir = path.join(process.cwd(), "images");
+
+  BG_IMAGE = {
+    data: fs.readFileSync(path.join(imgDir, "showroom-bg.webp")).toString("base64"),
     mimeType: "image/webp",
   };
-});
+
+  REFERENCE_IMAGES = [1, 2, 3, 4, 5, 6].map((i) => ({
+    data: fs.readFileSync(path.join(imgDir, `matte-black-${i}.webp`)).toString("base64"),
+    mimeType: "image/webp",
+  }));
+}
 
 export const config = {
   maxDuration: 60,
@@ -33,6 +39,21 @@ export const config = {
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Load reference images
+  try {
+    loadImages();
+  } catch (err) {
+    console.error("Failed to load reference images:", err);
+    // List what's available for debugging
+    const imgDir = path.join(process.cwd(), "images");
+    let files = [];
+    try { files = fs.readdirSync(imgDir); } catch { files = ["(images dir not found)"]; }
+    console.error("Available files in images/:", files);
+    console.error("CWD:", process.cwd());
+    console.error("CWD contents:", fs.readdirSync(process.cwd()));
+    return res.status(500).json({ error: "Failed to load reference images: " + err.message, cwd: process.cwd(), files });
   }
 
   const { photo, mimeType } = req.body;
