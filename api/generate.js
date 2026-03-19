@@ -12,7 +12,12 @@ const ANGLE_PROMPTS = [
   "rear three-quarter view from above, looking down at trunk and passenger side",
 ];
 
-// Load reference images once at cold start
+// Load background and reference images once at cold start
+const BG_IMAGE = {
+  data: fs.readFileSync(path.join(process.cwd(), "images", "showroom-bg.webp")).toString("base64"),
+  mimeType: "image/webp",
+};
+
 const REFERENCE_IMAGES = [1, 2, 3, 4, 5, 6].map((i) => {
   const filePath = path.join(process.cwd(), "images", `matte-black-${i}.webp`);
   return {
@@ -53,12 +58,16 @@ export default async function handler(req, res) {
               parts: [
                 { inlineData: { data: photo, mimeType } },
                 { inlineData: { data: ref.data, mimeType: ref.mimeType } },
+                { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
                 {
-                  text: `The first image is a customer's car. The second image is a reference showing the exact camera angle, lighting, and showroom background I want.
+                  text: `I'm providing three images:
+1. A customer's car photo
+2. A reference image showing the exact camera angle and composition I want
+3. The exact showroom background to use
 
-Generate a photorealistic image of the customer's exact car (same make, model, color, and any custom details) placed in the same dark showroom environment as the reference image. Match the exact camera angle and composition of the reference: ${ANGLE_PROMPTS[i]}.
+Generate a photorealistic image of the customer's exact car (same make, model, color, and any custom details) placed in the showroom background from image 3. Match the exact camera angle and composition of image 2: ${ANGLE_PROMPTS[i]}.
 
-The lighting should be dramatic and moody, matching the reference. The background should be a clean, dark studio/showroom. The car should look like a real photograph, not a rendering.`,
+The lighting should be dramatic and moody with a subtle center spotlight on the dark concrete floor, exactly matching the showroom background provided. The car should look like a real photograph, not a rendering.`,
                 },
               ],
             },
