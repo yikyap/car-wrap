@@ -361,21 +361,17 @@ function applyAllColors() {
 // --- Upload & Generate ---
 let uploadedPhoto = null;
 
-const carUploadInput = document.getElementById('car-upload');
-carUploadInput.addEventListener('click', () => { carUploadInput.value = ''; });
-carUploadInput.addEventListener('change', (e) => {
+document.getElementById('car-upload').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const label = document.getElementById('upload-label');
   label.classList.add('has-file');
   label.querySelector('input').nextElementSibling.nextSibling.textContent = ' ' + file.name;
   document.getElementById('gen-btn').style.display = 'block';
+  document.getElementById('gen-btn').disabled = false;
   // Resize and store
   resizeImage(file, 1024).then(result => {
     uploadedPhoto = result;
-  }).catch(err => {
-    console.error('Resize failed:', err);
-    alert('Failed to process image: ' + err.message);
   });
 });
 
