@@ -3,6 +3,10 @@
     "api/generate.js": {
       "maxDuration": 60,
       "includeFiles": "images/{matte-black-*.webp,showroom-bg.webp}"
+    },
+    "api/recolor.js": {
+      "maxDuration": 60,
+      "includeFiles": "images/{matte-black-*.webp,showroom-bg.webp}"
     }
   },
   "rewrites": [

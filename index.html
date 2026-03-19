@@ -116,6 +116,8 @@ let st = { color: COLORS[0], finish: FINISHES[0] };
 const baseSlideData = []; // for recoloring: {origData, mask, canvas, width, height}
 let activeSlideCount = BASE_IMAGES.length;
 let usingRealPhotos = false;
+let customCarDescription = null; // set after upload+analysis
+const recolorCache = {}; // cache: "colorName|finishName" -> images array
 
 const carouselEl = document.getElementById('carousel');
 
@@ -250,17 +252,21 @@ function preloadImages(srcs) {
 }
 
 function switchColor(color) {
+  // If custom car is active, recolor via API
+  if (customCarDescription) {
+    recolorCustomCar(color);
+    return;
+  }
+
   if (color.images) {
     preloadImages(color.images).then(imgs => {
       const { slides, preserved } = createSlides(color.images.length);
-      // Paint canvases while still offscreen
       imgs.forEach((img, i) => {
         const canvas = slides[i].querySelector('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
       });
-      // Now swap into DOM — fully painted, no flash
       usingRealPhotos = true;
       commitSlides(slides, preserved, color.images.length);
     });
@@ -268,7 +274,6 @@ function switchColor(color) {
     if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
       preloadImages(BASE_IMAGES).then(imgs => {
         const { slides, preserved } = createSlides(BASE_IMAGES.length);
-        // Paint + build masks offscreen, then commit
         usingRealPhotos = false;
         commitSlides(slides, preserved, BASE_IMAGES.length);
         initBaseSlides();
@@ -459,12 +464,15 @@ async function generateViews() {
     currentSlide = 0;
     commitSlides(slides, 0, imgElements.length);
 
-    // Update badge with identified car
+    // Store car description for recoloring
     const parsed = JSON.parse(text);
-    const desc = parsed.carDescription || 'Your car';
-    // Truncate to first ~50 chars for badge
+    customCarDescription = parsed.carDescription || null;
+    // Clear recolor cache for new car
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    // Update badge with identified car
+    const desc = customCarDescription || 'Your car';
     const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
-    document.getElementById('badge').textContent = shortDesc;
+    document.getElementById('badge').textContent = shortDesc + ' · ' + st.color.name;
   } catch (err) {
     alert('Generation failed: ' + err.message);
   } finally {
@@ -472,6 +480,75 @@ async function generateViews() {
     btn.disabled = false;
     btn.textContent = 'Generate showroom views';
   }
+}
+
+// --- Custom car recoloring ---
+async function recolorCustomCar(color) {
+  const cacheKey = color.name + '|' + st.finish.name;
+
+  // Check cache first
+  if (recolorCache[cacheKey]) {
+    displayGeneratedImages(recolorCache[cacheKey]);
+    updateCustomBadge(color);
+    return;
+  }
+
+  showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
+
+  try {
+    const resp = await fetch('/api/recolor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carDescription: customCarDescription,
+        colorName: color.name,
+        finishName: st.finish.name,
+      }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      let msg = 'Recolor failed';
+      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
+      throw new Error(msg);
+    }
+
+    const { images } = JSON.parse(text);
+    recolorCache[cacheKey] = images;
+    displayGeneratedImages(images);
+    updateCustomBadge(color);
+  } catch (err) {
+    alert('Recolor failed: ' + err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+function displayGeneratedImages(images) {
+  Promise.all(images.map(img => {
+    return new Promise(resolve => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.src = `data:${img.mimeType};base64,${img.data}`;
+    });
+  })).then(imgElements => {
+    const { slides } = createSlides(imgElements.length);
+    imgElements.forEach((img, i) => {
+      const canvas = slides[i].querySelector('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    });
+    usingRealPhotos = true;
+    currentSlide = 0;
+    commitSlides(slides, 0, imgElements.length);
+  });
+}
+
+function updateCustomBadge(color) {
+  const desc = customCarDescription || 'Your car';
+  const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
+  document.getElementById('badge').textContent = shortDesc + ' · ' + color.name;
 }
 
 // Initialize with base white images
