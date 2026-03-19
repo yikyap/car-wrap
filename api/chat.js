@@ -101,9 +101,15 @@ module.exports = async function handler(req, res) {
       model: "gemini-2.5-flash",
       contents: fullMessages,
       tools: TOOLS,
+      config: {
+        toolConfig: {
+          functionCallingConfig: { mode: "AUTO" },
+        },
+      },
     });
 
     const parts = result.candidates?.[0]?.content?.parts || [];
+    console.log("Gemini response parts:", JSON.stringify(parts));
 
     let reply = "";
     const functionCalls = [];
@@ -115,6 +121,24 @@ module.exports = async function handler(req, res) {
           name: part.functionCall.name,
           args: part.functionCall.args || {},
         });
+      }
+    }
+
+    // Fallback: if the model said it's generating but didn't call the function,
+    // try to extract car details and force the function call
+    if (functionCalls.length === 0 && reply.toLowerCase().match(/generat/)) {
+      // Build a car description from the conversation
+      const userMessages = messages
+        .filter((m) => m.role === "user")
+        .map((m) => m.parts.map((p) => p.text || "").join(" "))
+        .join(". ");
+
+      if (userMessages.length > 5) {
+        functionCalls.push({
+          name: "generate_car",
+          args: { carDescription: userMessages },
+        });
+        console.log("Forced generate_car with:", userMessages);
       }
     }
 
