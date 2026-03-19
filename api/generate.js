@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
 import path from "path";
 
@@ -12,7 +12,7 @@ const ANGLE_PROMPTS = [
   "rear three-quarter view from above, looking down at trunk and passenger side",
 ];
 
-// Lazy-load images on first request (avoids cold-start crash if paths differ)
+// Lazy-load images on first request
 let BG_IMAGE = null;
 let REFERENCE_IMAGES = null;
 
@@ -41,19 +41,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Load reference images
   try {
     loadImages();
   } catch (err) {
     console.error("Failed to load reference images:", err);
-    // List what's available for debugging
-    const imgDir = path.join(process.cwd(), "images");
-    let files = [];
-    try { files = fs.readdirSync(imgDir); } catch { files = ["(images dir not found)"]; }
-    console.error("Available files in images/:", files);
-    console.error("CWD:", process.cwd());
-    console.error("CWD contents:", fs.readdirSync(process.cwd()));
-    return res.status(500).json({ error: "Failed to load reference images: " + err.message, cwd: process.cwd(), files });
+    return res.status(500).json({ error: "Failed to load reference images: " + err.message });
   }
 
   const { photo, mimeType } = req.body;
@@ -66,22 +58,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-exp",
+    generationConfig: {
+      responseModalities: ["IMAGE", "TEXT"],
+    },
+  });
 
   try {
     const results = await Promise.all(
       REFERENCE_IMAGES.map((ref, i) =>
-        ai.models.generateContent({
-          model: "gemini-2.0-flash-exp",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { inlineData: { data: photo, mimeType } },
-                { inlineData: { data: ref.data, mimeType: ref.mimeType } },
-                { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
-                {
-                  text: `I'm providing three images:
+        model.generateContent([
+          { inlineData: { data: photo, mimeType } },
+          { inlineData: { data: ref.data, mimeType: ref.mimeType } },
+          { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
+          {
+            text: `I'm providing three images:
 1. A customer's car photo
 2. A reference image showing the exact camera angle and composition I want
 3. The exact showroom background to use
@@ -89,19 +82,13 @@ export default async function handler(req, res) {
 Generate a photorealistic image of the customer's exact car (same make, model, color, and any custom details) placed in the showroom background from image 3. Match the exact camera angle and composition of image 2: ${ANGLE_PROMPTS[i]}.
 
 The lighting should be dramatic and moody with a subtle center spotlight on the dark concrete floor, exactly matching the showroom background provided. The car should look like a real photograph, not a rendering.`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ["IMAGE", "TEXT"],
           },
-        })
+        ])
       )
     );
 
     const images = results.map((r) => {
-      const parts = r.candidates?.[0]?.content?.parts || [];
+      const parts = r.response.candidates?.[0]?.content?.parts || [];
       const imgPart = parts.find((p) => p.inlineData);
       if (!imgPart) throw new Error("No image in response");
       return {
