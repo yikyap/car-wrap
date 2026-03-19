@@ -57,6 +57,36 @@ module.exports = async function handler(req, res) {
   const ai = new GoogleGenAI({ apiKey });
 
   try {
+    // Step 1: Analyze the uploaded photo to identify the car
+    const analysisResult = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { data: photo, mimeType } },
+            {
+              text: `Analyze this car photo and provide a detailed description. Be specific and concise. Include:
+
+1. Make and model (e.g. "2024 BMW M4 Competition")
+2. Trim/variant if identifiable
+3. Body color (exact shade, e.g. "Isle of Man Green metallic")
+4. Wheel/rim style and color (e.g. "19-inch black M Sport alloy wheels")
+5. Any aftermarket or custom modifications visible (body kit, spoiler, tinted windows, wrap, decals, etc.)
+6. Notable design details (grille style, headlight shape, body lines)
+
+Respond with ONLY a single paragraph description, no bullet points or labels. Be as specific as possible about the exact car.`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const carDescription =
+      analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "a car";
+    console.log("Car identified as:", carDescription);
+
+    // Step 2: Generate 6 showroom views using the description
     const results = await Promise.all(
       REFERENCE_IMAGES.map((ref, i) =>
         ai.models.generateContent({
@@ -65,18 +95,17 @@ module.exports = async function handler(req, res) {
             {
               role: "user",
               parts: [
-                { inlineData: { data: photo, mimeType } },
                 { inlineData: { data: ref.data, mimeType: ref.mimeType } },
                 { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
                 {
-                  text: `I'm providing three images:
-1. A customer's car photo
-2. A reference image showing the exact camera angle and composition I want
-3. The exact showroom background to use
+                  text: `Generate a photorealistic showroom image of the following car:
 
-Generate a photorealistic image of the customer's exact car (same make, model, color, and any custom details) placed in the showroom background from image 3. Match the exact camera angle and composition of image 2: ${ANGLE_PROMPTS[i]}.
+${carDescription}
 
-The lighting should be dramatic and moody with a subtle center spotlight on the dark concrete floor, exactly matching the showroom background provided. The car should look like a real photograph, not a rendering.`,
+Use the first image as a reference for the exact camera angle and composition: ${ANGLE_PROMPTS[i]}.
+Use the second image as the exact showroom background — dark studio with subtle center spotlight on dark concrete floor.
+
+The car must match the description exactly — same make, model, color, wheels, and all details. The image should look like a professional car photograph, not a rendering. No text or watermarks.`,
                 },
               ],
             },
@@ -95,7 +124,7 @@ The lighting should be dramatic and moody with a subtle center spotlight on the 
       };
     });
 
-    res.status(200).json({ images });
+    res.status(200).json({ images, carDescription });
   } catch (err) {
     console.error("Gemini API error:", err);
     res.status(500).json({ error: err.message || "Generation failed" });
