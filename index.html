@@ -39,6 +39,17 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .price-val { font-size: 26px; font-weight: 500; }
 .cta { width: 100%; padding: 11px; font-size: 13px; font-weight: 500; border-radius: 8px; background: #fff; color: #000; border: none; cursor: pointer; transition: opacity 0.12s; font-family: inherit; }
 .cta:hover { opacity: 0.85; }
+.upload-card { background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 0.9rem 1.1rem; }
+.upload-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1.5px dashed #333; border-radius: 8px; cursor: pointer; color: #888; font-size: 12px; transition: all 0.15s; }
+.upload-label:hover { border-color: #555; color: #aaa; background: rgba(255,255,255,0.03); }
+.upload-label.has-file { border-color: #4a4; color: #8c8; border-style: solid; }
+.gen-btn { width: 100%; padding: 9px; font-size: 12px; font-weight: 500; border-radius: 8px; background: #333; color: #fff; border: none; cursor: pointer; transition: all 0.15s; font-family: inherit; margin-top: 8px; display: none; }
+.gen-btn:hover { background: #444; }
+.gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 12px; backdrop-filter: blur(4px); }
+.spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: #999; }
 @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -61,6 +72,15 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
     <div class="card">
       <div class="lbl">Finish</div>
       <div class="row" id="fr"></div>
+    </div>
+    <div class="upload-card">
+      <div class="lbl">Your car</div>
+      <label class="upload-label" id="upload-label" for="car-upload">
+        <input type="file" id="car-upload" accept="image/*" hidden>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload a photo of your car
+      </label>
+      <button class="gen-btn" id="gen-btn" onclick="generateViews()">Generate showroom views</button>
     </div>
     <div class="price-card">
       <div class="price-label">Estimated starting price</div>
@@ -336,6 +356,115 @@ function applyColorToSlide(idx, hex) {
 
 function applyAllColors() {
   for (let i = 0; i < BASE_IMAGES.length; i++) applyColorToSlide(i, st.color.hex);
+}
+
+// --- Upload & Generate ---
+let uploadedPhoto = null;
+
+document.getElementById('car-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const label = document.getElementById('upload-label');
+  label.classList.add('has-file');
+  label.querySelector('input').nextElementSibling.nextSibling.textContent = ' ' + file.name;
+  // Resize and store
+  resizeImage(file, 1024).then(result => {
+    uploadedPhoto = result;
+    document.getElementById('gen-btn').style.display = 'block';
+  });
+});
+
+function resizeImage(file, maxSize) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const base64 = dataUrl.split(',')[1];
+        resolve({ base64, mimeType: 'image/jpeg' });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function showLoading(msg) {
+  let overlay = document.getElementById('loading-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = '<div class="spinner"></div><div class="loading-text" id="loading-text"></div>';
+    carouselEl.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  document.getElementById('loading-text').textContent = msg || 'Generating showroom views...';
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function generateViews() {
+  if (!uploadedPhoto) return;
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  showLoading('Generating 6 showroom views — this may take 15-30 seconds...');
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'Generation failed');
+    }
+
+    const { images } = await resp.json();
+
+    // Load generated images into carousel
+    const imgElements = await Promise.all(images.map(img => {
+      return new Promise(resolve => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.src = `data:${img.mimeType};base64,${img.data}`;
+      });
+    }));
+
+    const { slides, preserved } = createSlides(imgElements.length);
+    imgElements.forEach((img, i) => {
+      const canvas = slides[i].querySelector('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    });
+    usingRealPhotos = true;
+    currentSlide = 0;
+    commitSlides(slides, 0, imgElements.length);
+
+    // Update badge
+    document.getElementById('badge').textContent = 'Your car · Custom';
+  } catch (err) {
+    alert('Generation failed: ' + err.message);
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.textContent = 'Generate showroom views';
+  }
 }
 
 // Initialize with base white images
