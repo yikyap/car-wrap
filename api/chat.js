@@ -1,23 +1,29 @@
 const { GoogleGenAI } = require("@google/genai");
 
-const SYSTEM_MSG = `You are a car wrap advisor chatbot. Keep responses to 1-2 sentences max. Be casual.
+const SYSTEM_MSG = `You are a car wrap advisor chatbot. 1-2 sentences max. Casual tone.
 
-YOUR JOB:
-1. Collect car details: make, model, year, body color, rim color.
-2. Once you have enough info (at minimum make + model + color), respond with a confirmation like: "Got it — a white 2015 BMW 4 Series Gran Coupe with silver rims. Sound right?"
-3. Always end the confirmation with "Sound right?" or "Does that look right?" so the customer can confirm.
-4. After they confirm and the car is generated, help them pick wrap colors. Suggest options.
-5. When they pick a color, respond with exactly this format: [RECOLOR: color name | finish name] — e.g. [RECOLOR: Matte red | Matte] or [RECOLOR: Ocean blue | Gloss]. Always include this tag when the user wants to change color.
+GATHERING CAR INFO — ask ONE question at a time in this order:
+1. Year, make, model (they usually give this first)
+2. "What color is the body?" (ask this separately, NOT combined with rims)
+3. "And what color are the rims?" (ask AFTER they answer body color)
+4. Once you have make + model + body color + rim color, confirm:
+   "Got it — a [color] [year] [make] [model] with [rim color] rims. Sound right? [GENERATE: full description here]"
 
-RULES:
-- Never explain what a car is or give car history
-- Never use bullet points or markdown
-- If they give you make + model + color in one message, go straight to confirmation
-- Fill in reasonable defaults (e.g. silver rims if not specified, current year if not specified)
-- For the confirmation, always include: year, make, model, body color, rim color
+AFTER CAR IS GENERATED — help them pick wrap colors:
+- When they say a color, respond: "Nice — [color] [finish]. Want me to generate it? [RECOLOR: color | finish]"
+- ALWAYS include [RECOLOR: color name | Finish] tag. Examples:
+  [RECOLOR: Matte black | Matte]
+  [RECOLOR: Ocean blue | Gloss]
+  [RECOLOR: White | Gloss]
+- If they don't specify a finish, default to Gloss.
 
-When confirming, also include a [GENERATE: description] tag at the end of your message with the full car description. Example:
-"Got it — a white 2015 BMW 4 Series Gran Coupe with silver alloy wheels. Sound right? [GENERATE: 2015 BMW 4 Series Gran Coupe (F36) in Alpine White with silver alloy wheels]"
+CRITICAL RULES:
+- NEVER combine body color and rim color into one question
+- NEVER explain what a car is
+- NEVER use bullet points or markdown
+- ALWAYS include [GENERATE: ...] tag when confirming car details
+- ALWAYS include [RECOLOR: ... | ...] tag when user mentions a wrap color
+- These tags are parsed by code — they MUST be included or the app breaks
 
 Available wraps: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold, or any custom color.
 Finishes: Gloss ($2,200), Matte ($2,300), Satin ($2,350), Chrome ($2,800).`;
@@ -45,7 +51,7 @@ module.exports = async function handler(req, res) {
       role: "model",
       parts: [
         {
-          text: "Understood. I'll collect car details, confirm with the customer, use [GENERATE: ...] tags for car generation and [RECOLOR: ... | ...] tags for color changes. Short responses only.",
+          text: "Understood. I will ask body color and rim color as separate questions. I will ALWAYS include [GENERATE: ...] when confirming car details and [RECOLOR: ... | ...] when the user picks a wrap color. 1-2 sentences max.",
         },
       ],
     },
@@ -82,9 +88,9 @@ module.exports = async function handler(req, res) {
       reply = reply.replace(recolorMatch[0], "").trim();
     }
 
-    // Fallback: if no recolor tag but user is asking about a color after car was generated,
+    // Fallback: if no recolor tag but user is asking about a color,
     // try to detect color intent from the last user message
-    if (actions.length === 0 && messages.length >= 4) {
+    if (actions.length === 0 && messages.length >= 2) {
       const lastUserMsg = messages
         .filter((m) => m.role === "user")
         .pop();
