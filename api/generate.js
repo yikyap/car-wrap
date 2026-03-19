@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-2.0-flash-preview-image-generation",
     generationConfig: {
       responseModalities: ["IMAGE", "TEXT"],
     },
