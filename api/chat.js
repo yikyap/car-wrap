@@ -1,8 +1,8 @@
 const { GoogleGenAI } = require("@google/genai");
 
-const SYSTEM_PROMPT = `You are a car wrap advisor chatbot. You MUST follow these rules strictly:
+const SYSTEM_MSG = `You are a car wrap advisor chatbot. You MUST follow these rules strictly:
 
-RESPONSE LENGTH: 1 sentence max. Never more. Never use bullet points or markdown.
+RESPONSE LENGTH: 1 sentence max. Never more. Never use bullet points or markdown formatting.
 
 YOUR ONLY JOB:
 1. Collect car details from the customer (make, model, color, rim color).
@@ -16,7 +16,7 @@ EXAMPLES OF CORRECT BEHAVIOR:
 - User: "Black" → Now you have enough. Call generate_car. Reply: "Got it, generating your black Model 3!"
 - User: "Show me matte red" → Call recolor_car. Reply: "Switching to matte red!"
 
-NEVER explain what a car is. NEVER give opinions on colors unless asked. NEVER use bullet points. Just collect info and generate.
+NEVER explain what a car is. NEVER give opinions on colors unless asked. NEVER use bullet points. NEVER write more than 1 sentence. Just collect info and generate.
 
 Available wraps: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold, or any custom color.
 Finishes: Gloss ($2,200), Matte ($2,300), Satin ($2,350), Chrome ($2,800).`;
@@ -27,14 +27,14 @@ const TOOLS = [
       {
         name: "generate_car",
         description:
-          "Generate 6 showroom views of the customer's car based on their description. Call this once you have enough details about their car (make, model, year, color, rim color).",
+          "Generate 6 showroom views of the customer's car based on their description. Call this once you have make, model, and body color.",
         parameters: {
           type: "object",
           properties: {
             carDescription: {
               type: "string",
               description:
-                'A detailed description of the car including make, model, year, body color, rim/wheel color, trim level, and any modifications. E.g. "2015 BMW 4 Series Gran Coupe (F36) in Mineral Grey metallic with 19-inch silver M Sport alloy wheels, M Sport package, black kidney grille"',
+                'Detailed car description including make, model, year, body color, rim color, trim. E.g. "BMW 4 Series Gran Coupe in white with silver alloy wheels"',
             },
           },
           required: ["carDescription"],
@@ -43,7 +43,7 @@ const TOOLS = [
       {
         name: "generate_views",
         description:
-          "Generate 6 showroom views from a photo the customer uploaded. Call this when they attach a photo of their car.",
+          "Generate showroom views from a photo the customer uploaded.",
         parameters: {
           type: "object",
           properties: {},
@@ -52,7 +52,7 @@ const TOOLS = [
       {
         name: "recolor_car",
         description:
-          "Change the wrap color and finish on the customer's car. Only call after generate_car or generate_views has been used.",
+          "Change the wrap color on the customer's car after it has been generated.",
         parameters: {
           type: "object",
           properties: {
@@ -63,40 +63,9 @@ const TOOLS = [
             finishName: {
               type: "string",
               enum: ["Gloss", "Matte", "Satin", "Chrome"],
-              description: "The finish type",
             },
           },
           required: ["colorName"],
-        },
-      },
-      {
-        name: "switch_color",
-        description:
-          "Switch the visualizer to a preset color (before a custom car is generated). Use for browsing the default Tesla Model 3 previews.",
-        parameters: {
-          type: "object",
-          properties: {
-            colorName: {
-              type: "string",
-              description: "The color name from the preset list",
-            },
-          },
-          required: ["colorName"],
-        },
-      },
-      {
-        name: "switch_finish",
-        description: "Switch the wrap finish type.",
-        parameters: {
-          type: "object",
-          properties: {
-            finishName: {
-              type: "string",
-              enum: ["Gloss", "Matte", "Satin", "Chrome"],
-              description: "The finish type",
-            },
-          },
-          required: ["finishName"],
         },
       },
     ],
@@ -120,11 +89,17 @@ module.exports = async function handler(req, res) {
 
   const ai = new GoogleGenAI({ apiKey });
 
+  // Prepend system message as first exchange in conversation
+  const fullMessages = [
+    { role: "user", parts: [{ text: SYSTEM_MSG }] },
+    { role: "model", parts: [{ text: "Understood. I will keep responses to 1 sentence, collect car details quickly, and call generate_car as soon as I have make + model + color. No bullet points, no markdown, no opinions." }] },
+    ...messages,
+  ];
+
   try {
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      systemInstruction: SYSTEM_PROMPT,
-      contents: messages,
+      contents: fullMessages,
       tools: TOOLS,
     });
 
@@ -134,9 +109,7 @@ module.exports = async function handler(req, res) {
     const functionCalls = [];
 
     for (const part of parts) {
-      if (part.text) {
-        reply += part.text;
-      }
+      if (part.text) reply += part.text;
       if (part.functionCall) {
         functionCalls.push({
           name: part.functionCall.name,
