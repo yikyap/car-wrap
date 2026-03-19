@@ -369,10 +369,13 @@ carUploadInput.addEventListener('change', (e) => {
   const label = document.getElementById('upload-label');
   label.classList.add('has-file');
   label.querySelector('input').nextElementSibling.nextSibling.textContent = ' ' + file.name;
+  document.getElementById('gen-btn').style.display = 'block';
   // Resize and store
   resizeImage(file, 1024).then(result => {
     uploadedPhoto = result;
-    document.getElementById('gen-btn').style.display = 'block';
+  }).catch(err => {
+    console.error('Resize failed:', err);
+    alert('Failed to process image: ' + err.message);
   });
 });
 
