@@ -73,8 +73,8 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 <script>
 const COLORS = [
   {name:'Pearl white', hex:'#ffffff'},
-  {name:'Matte black', hex:'#0a0a0a', images:['./images/matte-black-1.webp','./images/matte-black-2.webp','./images/matte-black-3.webp','./images/matte-black-4.webp','./images/matte-black-5.webp','./images/matte-black-6.webp']},
-  {name:'Matte red', hex:'#c0201e', images:['./images/matte-red-2.webp','./images/matte-red-3.webp','./images/matte-red-4.webp','./images/matte-red-7.webp','./images/matte-red-1.webp','./images/matte-red-5.webp']},
+  {name:'Matte black', hex:'#0a0a0a', finish:'Matte', images:['./images/matte-black-1.webp','./images/matte-black-2.webp','./images/matte-black-3.webp','./images/matte-black-4.webp','./images/matte-black-5.webp','./images/matte-black-6.webp']},
+  {name:'Matte red', hex:'#c0201e', finish:'Matte', images:['./images/matte-red-2.webp','./images/matte-red-3.webp','./images/matte-red-4.webp','./images/matte-red-7.webp','./images/matte-red-1.webp','./images/matte-red-5.webp']},
   {name:'Sunflower', hex:'#d4a017'},
   {name:'Ocean blue', hex:'#1a3a8a'},
   {name:'British green', hex:'#2a5a3a'},
@@ -101,24 +101,37 @@ const carouselEl = document.getElementById('carousel');
 
 // Build UI
 const cg = document.getElementById('cg');
-COLORS.forEach((c, i) => {
-  const s = document.createElement('div');
-  s.className = 'sw' + (i === 0 ? ' on' : '');
-  s.style.background = c.hex;
-  if (c.hex === '#ffffff') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
-  if (c.hex === '#0a0a0a') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
-  s.title = c.name;
-  s.onclick = () => {
-    document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
-    s.classList.add('on');
-    st.color = c;
-    document.getElementById('cn').textContent = c.name;
+function buildColorGrid() {
+  cg.innerHTML = '';
+  const filtered = COLORS.filter(c => !c.finish || c.finish === st.finish.name);
+  filtered.forEach((c) => {
+    const s = document.createElement('div');
+    s.className = 'sw' + (c === st.color ? ' on' : '');
+    s.style.background = c.hex;
+    if (c.hex === '#ffffff') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
+    if (c.hex === '#0a0a0a') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
+    s.title = c.name;
+    s.onclick = () => {
+      document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+      s.classList.add('on');
+      st.color = c;
+      document.getElementById('cn').textContent = c.name;
+      updateBadge();
+      switchColor(c);
+      updatePrice();
+    };
+    cg.appendChild(s);
+  });
+  // If current color is not in filtered list, select the first one
+  if (!filtered.includes(st.color)) {
+    st.color = filtered[0];
+    document.getElementById('cn').textContent = st.color.name;
     updateBadge();
-    switchColor(c);
-    updatePrice();
-  };
-  cg.appendChild(s);
-});
+    switchColor(st.color);
+    cg.querySelector('.sw').classList.add('on');
+  }
+}
+buildColorGrid();
 
 const fr = document.getElementById('fr');
 FINISHES.forEach((f, i) => {
@@ -129,6 +142,7 @@ FINISHES.forEach((f, i) => {
     document.querySelectorAll('#fr .pill').forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     st.finish = f;
+    buildColorGrid();
     updateBadge();
     updatePrice();
   };
