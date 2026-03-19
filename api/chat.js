@@ -82,6 +82,56 @@ module.exports = async function handler(req, res) {
       reply = reply.replace(recolorMatch[0], "").trim();
     }
 
+    // Fallback: if no recolor tag but user is asking about a color after car was generated,
+    // try to detect color intent from the last user message
+    if (actions.length === 0 && messages.length >= 4) {
+      const lastUserMsg = messages
+        .filter((m) => m.role === "user")
+        .pop();
+      const lastUserText = (lastUserMsg?.parts || [])
+        .map((p) => p.text || "")
+        .join(" ")
+        .toLowerCase();
+
+      const allColors = [
+        "pearl white", "matte black", "matte red", "sunflower",
+        "ocean blue", "british green", "burnt orange", "royal purple",
+        "gunmetal", "rose gold",
+      ];
+      const allFinishes = ["gloss", "matte", "satin", "chrome"];
+
+      // Check if user mentioned a color
+      let detectedColor = null;
+      let detectedFinish = "Gloss";
+
+      for (const c of allColors) {
+        if (lastUserText.includes(c)) { detectedColor = c; break; }
+      }
+
+      // Check for color words even if not in preset list
+      if (!detectedColor) {
+        const colorWords = ["black", "white", "red", "blue", "green", "orange", "purple", "grey", "gray", "gold", "silver", "pink", "yellow", "brown", "bronze", "teal", "navy", "maroon", "cream", "beige", "charcoal"];
+        for (const w of colorWords) {
+          if (lastUserText.includes(w)) {
+            // Extract the color phrase from the reply or user message
+            detectedColor = lastUserText.replace(/i('d| would) (like|want|love) (to see |to try |)?(a |it in |)/gi, "").trim();
+            break;
+          }
+        }
+      }
+
+      for (const f of allFinishes) {
+        if (lastUserText.includes(f)) { detectedFinish = f.charAt(0).toUpperCase() + f.slice(1); break; }
+      }
+
+      if (detectedColor) {
+        // Capitalize color name
+        const colorName = detectedColor.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        actions.push({ type: "recolor_car", colorName, finishName: detectedFinish });
+        console.log("Fallback recolor detected:", colorName, detectedFinish);
+      }
+    }
+
     res.status(200).json({ reply, actions });
   } catch (err) {
     console.error("Chat error:", err);
