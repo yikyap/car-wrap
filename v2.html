@@ -42,12 +42,16 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .confirm-btn.no { background: #333; color: #fff; }
 .confirm-btn:hover { opacity: 0.8; }
 .confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.chat-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
-.chat-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; border: 2px solid transparent; cursor: pointer; transition: transform 0.12s, border-color 0.12s; position: relative; }
-.chat-swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,0.5); }
-.chat-swatch-label { font-size: 9px; color: #999; text-align: center; margin-top: 2px; line-height: 1.1; }
-.chat-custom-color { grid-column: span 6; margin-top: 4px; font-size: 11px; color: #888; text-align: center; cursor: pointer; padding: 6px; border: 0.5px dashed #444; border-radius: 6px; transition: all 0.15s; }
-.chat-custom-color:hover { color: #ccc; border-color: #666; }
+.palette-section { padding: 10px 0; text-align: center; }
+.palette-title { font-size: 12px; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.chat-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 340px; margin: 0 auto; }
+.palette-item { text-align: center; opacity: 0; transform: translateY(10px); animation: swatchReveal 0.3s ease forwards; }
+.chat-swatch { width: 100%; aspect-ratio: 1; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.chat-swatch:hover { transform: scale(1.18); border-color: rgba(255,255,255,0.6); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.chat-swatch-label { font-size: 9px; color: #777; margin-top: 4px; line-height: 1.15; }
+.chat-custom-color { max-width: 340px; margin: 12px auto 0; font-size: 11px; color: #777; text-align: center; cursor: pointer; padding: 8px; border: 1px dashed #444; border-radius: 8px; transition: all 0.15s; opacity: 0; animation: swatchReveal 0.3s ease forwards; animation-delay: 0.7s; }
+.chat-custom-color:hover { color: #ccc; border-color: #666; background: rgba(255,255,255,0.03); }
+@keyframes swatchReveal { to { opacity: 1; transform: translateY(0); } }
 .typing { align-self: flex-start; padding: 12px 16px; }
 .typing span { display: inline-block; width: 6px; height: 6px; background: #555; border-radius: 50%; animation: typingDot 1.4s infinite; margin-right: 3px; }
 .typing span:nth-child(2) { animation-delay: 0.2s; }
@@ -468,16 +472,23 @@ const PALETTE_COLORS = [
 ];
 
 function addMessageWithPalette(text) {
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.textContent = text;
+  addMessage(text, 'bot');
+
+  const section = document.createElement('div');
+  section.className = 'palette-section';
+
+  const title = document.createElement('div');
+  title.className = 'palette-title';
+  title.textContent = 'Popular colors';
+  section.appendChild(title);
 
   const palette = document.createElement('div');
   palette.className = 'chat-palette';
 
-  PALETTE_COLORS.forEach(pc => {
-    const wrap = document.createElement('div');
-    wrap.style.textAlign = 'center';
+  PALETTE_COLORS.forEach((pc, idx) => {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.style.animationDelay = (idx * 0.05) + 's';
 
     const swatch = document.createElement('div');
     swatch.className = 'chat-swatch';
@@ -486,8 +497,7 @@ function addMessageWithPalette(text) {
     if (pc.hex === '#0a0a0a') swatch.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
     swatch.title = pc.name;
     swatch.onclick = () => {
-      palette.remove();
-      customRow.remove();
+      section.remove();
       addMessage(pc.name, 'user');
       chatHistory.push({ role: 'user', parts: [{ text: pc.name }] });
       addRecolorConfirm(pc.name + ' — want me to generate it?', pc.name, pc.finish);
@@ -497,24 +507,24 @@ function addMessageWithPalette(text) {
     label.className = 'chat-swatch-label';
     label.textContent = pc.name;
 
-    wrap.appendChild(swatch);
-    wrap.appendChild(label);
-    palette.appendChild(wrap);
+    item.appendChild(swatch);
+    item.appendChild(label);
+    palette.appendChild(item);
   });
+
+  section.appendChild(palette);
 
   const customRow = document.createElement('div');
   customRow.className = 'chat-custom-color';
   customRow.textContent = 'Or describe your own color...';
   customRow.onclick = () => {
-    palette.remove();
-    customRow.remove();
+    section.remove();
     chatInput.placeholder = 'Type a color name, e.g. "midnight purple metallic"...';
     chatInput.focus();
   };
+  section.appendChild(customRow);
 
-  div.appendChild(palette);
-  div.appendChild(customRow);
-  chatMessages.appendChild(div);
+  chatMessages.appendChild(section);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
