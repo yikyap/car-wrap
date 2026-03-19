@@ -36,6 +36,12 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .msg.user { align-self: flex-end; background: #333; border-bottom-right-radius: 4px; }
 .msg.bot { align-self: flex-start; background: #222; border-bottom-left-radius: 4px; color: #ddd; }
 .msg.bot .action-tag { display: inline-block; background: #2a3a2a; color: #8c8; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
+.confirm-btns { display: flex; gap: 8px; margin-top: 8px; }
+.confirm-btn { padding: 7px 18px; border-radius: 8px; border: none; font-size: 12px; font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+.confirm-btn.yes { background: #fff; color: #000; }
+.confirm-btn.no { background: #333; color: #fff; }
+.confirm-btn:hover { opacity: 0.8; }
+.confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .typing { align-self: flex-start; padding: 12px 16px; }
 .typing span { display: inline-block; width: 6px; height: 6px; background: #555; border-radius: 50%; animation: typingDot 1.4s infinite; margin-right: 3px; }
 .typing span:nth-child(2) { animation-delay: 0.2s; }
@@ -389,6 +395,52 @@ function addMessage(text, role, actionTag) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function addMessageWithConfirm(text, carDescription) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = text;
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Yes, generate it!';
+  yesBtn.onclick = async () => {
+    yesBtn.disabled = true; noBtn.disabled = true;
+    yesBtn.textContent = 'Generating...';
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
+    try {
+      await generateFromDescription(carDescription);
+      addMessage('Your car is ready! What wrap color would you like to see?', 'bot');
+      chatHistory.push({ role: 'model', parts: [{ text: 'Your car is ready! What wrap color would you like to see?' }] });
+    } catch (err) {
+      addMessage('Generation failed: ' + err.message, 'bot');
+    }
+    btns.remove();
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Not quite';
+  noBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite, let me correct some details.' }] });
+    addMessage('Not quite', 'user');
+    sendMessage.fromCorrection = true;
+    // Send to get follow-up
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: chatHistory }) })
+      .then(r => r.json()).then(data => {
+        if (data.reply) {
+          addMessage(data.reply, 'bot');
+          chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+        }
+      });
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 function showTyping() {
   const div = document.createElement('div');
   div.className = 'typing';
@@ -453,26 +505,33 @@ async function sendMessage() {
     });
     const data = await resp.json();
     hideTyping();
-    console.log('Chat API response:', JSON.stringify(data));
 
     if (!resp.ok) throw new Error(data.error || 'Chat failed');
 
-    // Show bot reply first so user sees feedback
+    // Show bot reply
     if (data.reply) {
-      addMessage(data.reply, 'bot');
+      // Check if this is a confirmation with a generate action
+      const genAction = (data.actions || []).find(a => a.type === 'generate_car');
+      if (genAction) {
+        addMessageWithConfirm(data.reply, genAction.carDescription);
+      } else {
+        addMessage(data.reply, 'bot');
+      }
       chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
     }
 
-    // Then execute function calls
-    console.log('Function calls:', data.functionCalls);
-    if (data.functionCalls && data.functionCalls.length > 0) {
-      for (const fc of data.functionCalls) {
-        console.log('Executing function call:', fc.name, fc.args);
-        try {
-          await executeFunctionCall(fc);
-        } catch (err) {
-          console.error('Function call failed:', fc.name, err);
-          addMessage('Failed to execute action: ' + err.message, 'bot');
+    // Auto-execute recolor actions (no confirmation needed)
+    for (const action of (data.actions || [])) {
+      if (action.type === 'recolor_car') {
+        const preset = COLORS.find(c => c.name.toLowerCase() === action.colorName.toLowerCase());
+        const color = preset || { name: action.colorName, hex: '#888888' };
+        if (action.finishName) st.finish = FINISHES.find(f => f.name === action.finishName) || st.finish;
+        st.color = color;
+        updateBadge();
+        if (customCarDescription) {
+          await recolorCustomCar(color);
+        } else {
+          switchColor(color);
         }
       }
     }
@@ -481,61 +540,6 @@ async function sendMessage() {
     addMessage('Sorry, something went wrong: ' + err.message, 'bot');
   } finally {
     document.getElementById('chat-send').disabled = false;
-  }
-}
-
-async function executeFunctionCall(fc) {
-  const { name, args } = fc;
-
-  switch (name) {
-    case 'switch_color': {
-      const preset = COLORS.find(c => c.name.toLowerCase() === (args.colorName || '').toLowerCase());
-      const color = preset || { name: args.colorName, hex: '#888888' };
-      st.color = color;
-      if (preset && preset.finish) {
-        st.finish = FINISHES.find(f => f.name === preset.finish) || st.finish;
-      }
-      updateBadge();
-      switchColor(color);
-      return 'Switched to ' + color.name;
-    }
-    case 'switch_finish': {
-      const finish = FINISHES.find(f => f.name === args.finishName);
-      if (finish) {
-        st.finish = finish;
-        updateBadge();
-        if (customCarDescription) recolorCustomCar(st.color);
-      }
-      return 'Switched to ' + (finish ? finish.name : args.finishName);
-    }
-    case 'generate_car': {
-      if (args.carDescription) {
-        await generateFromDescription(args.carDescription);
-        return 'Generating your car';
-      }
-      return null;
-    }
-    case 'generate_views': {
-      if (uploadedPhoto) {
-        await generateViews();
-        return 'Generated showroom views';
-      }
-      return null;
-    }
-    case 'recolor_car': {
-      if (customCarDescription) {
-        const color = { name: args.colorName, hex: '#888888' };
-        const preset = COLORS.find(c => c.name.toLowerCase() === (args.colorName || '').toLowerCase());
-        if (preset) Object.assign(color, preset);
-        if (args.finishName) st.finish = FINISHES.find(f => f.name === args.finishName) || st.finish;
-        st.color = color;
-        updateBadge();
-        await recolorCustomCar(color);
-        return 'Recolored to ' + color.name;
-      }
-      return null;
-    }
-    default: return null;
   }
 }
 

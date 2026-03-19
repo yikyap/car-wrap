@@ -1,76 +1,26 @@
 const { GoogleGenAI } = require("@google/genai");
 
-const SYSTEM_MSG = `You are a car wrap advisor chatbot. You MUST follow these rules strictly:
+const SYSTEM_MSG = `You are a car wrap advisor chatbot. Keep responses to 1-2 sentences max. Be casual.
 
-RESPONSE LENGTH: 1 sentence max. Never more. Never use bullet points or markdown formatting.
+YOUR JOB:
+1. Collect car details: make, model, year, body color, rim color.
+2. Once you have enough info (at minimum make + model + color), respond with a confirmation like: "Got it — a white 2015 BMW 4 Series Gran Coupe with silver rims. Sound right?"
+3. Always end the confirmation with "Sound right?" or "Does that look right?" so the customer can confirm.
+4. After they confirm and the car is generated, help them pick wrap colors. Suggest options.
+5. When they pick a color, respond with exactly this format: [RECOLOR: color name | finish name] — e.g. [RECOLOR: Matte red | Matte] or [RECOLOR: Ocean blue | Gloss]. Always include this tag when the user wants to change color.
 
-YOUR ONLY JOB:
-1. Collect car details from the customer (make, model, color, rim color).
-2. As soon as you have make + model + body color, call generate_car IMMEDIATELY. Do NOT keep chatting. Fill in reasonable defaults for anything missing (e.g. silver rims if not specified).
-3. After generating, ask what wrap color they want. When they answer, call recolor_car IMMEDIATELY.
-4. If they upload a photo, call generate_views IMMEDIATELY.
+RULES:
+- Never explain what a car is or give car history
+- Never use bullet points or markdown
+- If they give you make + model + color in one message, go straight to confirmation
+- Fill in reasonable defaults (e.g. silver rims if not specified, current year if not specified)
+- For the confirmation, always include: year, make, model, body color, rim color
 
-EXAMPLES OF CORRECT BEHAVIOR:
-- User: "BMW 4 series white" → You have make, model, color. Call generate_car right now with "BMW 4 Series in white with silver alloy wheels". Reply: "Generating your white BMW 4 Series now!"
-- User: "Tesla Model 3" → Missing color. Reply: "What color is your Model 3?"
-- User: "Black" → Now you have enough. Call generate_car. Reply: "Got it, generating your black Model 3!"
-- User: "Show me matte red" → Call recolor_car. Reply: "Switching to matte red!"
-
-NEVER explain what a car is. NEVER give opinions on colors unless asked. NEVER use bullet points. NEVER write more than 1 sentence. Just collect info and generate.
+When confirming, also include a [GENERATE: description] tag at the end of your message with the full car description. Example:
+"Got it — a white 2015 BMW 4 Series Gran Coupe with silver alloy wheels. Sound right? [GENERATE: 2015 BMW 4 Series Gran Coupe (F36) in Alpine White with silver alloy wheels]"
 
 Available wraps: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold, or any custom color.
 Finishes: Gloss ($2,200), Matte ($2,300), Satin ($2,350), Chrome ($2,800).`;
-
-const TOOLS = [
-  {
-    functionDeclarations: [
-      {
-        name: "generate_car",
-        description:
-          "Generate 6 showroom views of the customer's car based on their description. Call this once you have make, model, and body color.",
-        parameters: {
-          type: "object",
-          properties: {
-            carDescription: {
-              type: "string",
-              description:
-                'Detailed car description including make, model, year, body color, rim color, trim. E.g. "BMW 4 Series Gran Coupe in white with silver alloy wheels"',
-            },
-          },
-          required: ["carDescription"],
-        },
-      },
-      {
-        name: "generate_views",
-        description:
-          "Generate showroom views from a photo the customer uploaded.",
-        parameters: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "recolor_car",
-        description:
-          "Change the wrap color on the customer's car after it has been generated.",
-        parameters: {
-          type: "object",
-          properties: {
-            colorName: {
-              type: "string",
-              description: "The wrap color to apply",
-            },
-            finishName: {
-              type: "string",
-              enum: ["Gloss", "Matte", "Satin", "Chrome"],
-            },
-          },
-          required: ["colorName"],
-        },
-      },
-    ],
-  },
-];
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -89,10 +39,16 @@ module.exports = async function handler(req, res) {
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Prepend system message as first exchange in conversation
   const fullMessages = [
     { role: "user", parts: [{ text: SYSTEM_MSG }] },
-    { role: "model", parts: [{ text: "Understood. I will keep responses to 1 sentence, collect car details quickly, and call generate_car as soon as I have make + model + color. No bullet points, no markdown, no opinions." }] },
+    {
+      role: "model",
+      parts: [
+        {
+          text: "Understood. I'll collect car details, confirm with the customer, use [GENERATE: ...] tags for car generation and [RECOLOR: ... | ...] tags for color changes. Short responses only.",
+        },
+      ],
+    },
     ...messages,
   ];
 
@@ -100,49 +56,33 @@ module.exports = async function handler(req, res) {
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: fullMessages,
-      tools: TOOLS,
-      config: {
-        toolConfig: {
-          functionCallingConfig: { mode: "AUTO" },
-        },
-      },
     });
 
-    const parts = result.candidates?.[0]?.content?.parts || [];
-    console.log("Gemini response parts:", JSON.stringify(parts));
+    let reply =
+      result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I didn't catch that.";
 
-    let reply = "";
-    const functionCalls = [];
+    // Parse out action tags
+    const actions = [];
 
-    for (const part of parts) {
-      if (part.text) reply += part.text;
-      if (part.functionCall) {
-        functionCalls.push({
-          name: part.functionCall.name,
-          args: part.functionCall.args || {},
-        });
-      }
+    // Check for [GENERATE: ...]
+    const genMatch = reply.match(/\[GENERATE:\s*(.+?)\]/);
+    if (genMatch) {
+      actions.push({ type: "generate_car", carDescription: genMatch[1].trim() });
+      reply = reply.replace(genMatch[0], "").trim();
     }
 
-    // Fallback: if the model said it's generating but didn't call the function,
-    // try to extract car details and force the function call
-    if (functionCalls.length === 0 && reply.toLowerCase().match(/generat/)) {
-      // Build a car description from the conversation
-      const userMessages = messages
-        .filter((m) => m.role === "user")
-        .map((m) => m.parts.map((p) => p.text || "").join(" "))
-        .join(". ");
-
-      if (userMessages.length > 5) {
-        functionCalls.push({
-          name: "generate_car",
-          args: { carDescription: userMessages },
-        });
-        console.log("Forced generate_car with:", userMessages);
-      }
+    // Check for [RECOLOR: color | finish]
+    const recolorMatch = reply.match(/\[RECOLOR:\s*(.+?)\s*\|\s*(.+?)\]/);
+    if (recolorMatch) {
+      actions.push({
+        type: "recolor_car",
+        colorName: recolorMatch[1].trim(),
+        finishName: recolorMatch[2].trim(),
+      });
+      reply = reply.replace(recolorMatch[0], "").trim();
     }
 
-    res.status(200).json({ reply, functionCalls });
+    res.status(200).json({ reply, actions });
   } catch (err) {
     console.error("Chat error:", err);
     res.status(500).json({ error: err.message || "Chat failed" });
