@@ -331,9 +331,15 @@ async function generateViews() {
 }
 
 async function generateFromDescription(carDesc) {
+  console.log('generateFromDescription called with:', carDesc);
   showLoading('Generating your car in the showroom...');
   try {
-    const resp = await fetch('/api/generate-from-description', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ carDescription: carDesc }) });
+    const resp = await fetch('/api/generate-from-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carDescription: carDesc }),
+    });
+    console.log('generate-from-description response status:', resp.status);
     const text = await resp.text();
     if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
     const parsed = JSON.parse(text);
@@ -342,7 +348,12 @@ async function generateFromDescription(carDesc) {
     Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
     const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
     document.getElementById('badge').textContent = shortDesc;
-  } finally { hideLoading(); }
+  } catch (err) {
+    console.error('generateFromDescription error:', err);
+    throw err;
+  } finally {
+    hideLoading();
+  }
 }
 
 async function recolorCustomCar(color) {
@@ -445,18 +456,22 @@ async function sendMessage() {
 
     if (!resp.ok) throw new Error(data.error || 'Chat failed');
 
-    // Execute function calls
-    let actionTag = null;
-    if (data.functionCalls && data.functionCalls.length > 0) {
-      for (const fc of data.functionCalls) {
-        actionTag = await executeFunctionCall(fc);
-      }
+    // Show bot reply first so user sees feedback
+    if (data.reply) {
+      addMessage(data.reply, 'bot');
+      chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
     }
 
-    // Show bot reply
-    if (data.reply) {
-      addMessage(data.reply, 'bot', actionTag);
-      chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+    // Then execute function calls
+    if (data.functionCalls && data.functionCalls.length > 0) {
+      for (const fc of data.functionCalls) {
+        try {
+          await executeFunctionCall(fc);
+        } catch (err) {
+          console.error('Function call failed:', fc.name, err);
+          addMessage('Failed to execute action: ' + err.message, 'bot');
+        }
+      }
     }
   } catch (err) {
     hideTyping();
