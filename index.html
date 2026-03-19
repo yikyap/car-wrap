@@ -361,7 +361,9 @@ function applyAllColors() {
 // --- Upload & Generate ---
 let uploadedPhoto = null;
 
-document.getElementById('car-upload').addEventListener('change', (e) => {
+const carUploadInput = document.getElementById('car-upload');
+carUploadInput.addEventListener('click', () => { carUploadInput.value = ''; });
+carUploadInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const label = document.getElementById('upload-label');
