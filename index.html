@@ -429,13 +429,14 @@ async function generateViews() {
       body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }),
     });
 
+    const text = await resp.text();
     if (!resp.ok) {
       let msg = 'Generation failed';
-      try { const err = await resp.json(); msg = err.error || msg; } catch { msg = await resp.text() || msg; }
+      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
       throw new Error(msg);
     }
 
-    const { images } = await resp.json();
+    const { images } = JSON.parse(text);
 
     // Load generated images into carousel
     const imgElements = await Promise.all(images.map(img => {
