@@ -141,25 +141,24 @@ function updatePrice() { document.getElementById('pv').textContent = '$' + (2200
 // --- Dynamic slide management ---
 // Create slides offscreen, return them for painting before DOM insertion
 function createSlides(count) {
-  const preserved = Math.min(currentSlide, count - 1);
   const newSlides = [];
   for (let i = 0; i < count; i++) {
     const div = document.createElement('div');
-    div.className = 'slide' + (i === preserved ? ' active' : '');
+    div.className = 'slide' + (i === 0 ? ' active' : '');
     div.dataset.idx = i;
     div.innerHTML = '<canvas></canvas>';
     newSlides.push(div);
   }
-  return { slides: newSlides, preserved };
+  return { slides: newSlides };
 }
 
 // Swap painted slides into the DOM atomically
-function commitSlides(newSlides, preserved, count) {
+function commitSlides(newSlides, count) {
   carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
   const anchor = carouselEl.querySelector('.arrow-l');
   newSlides.forEach(s => carouselEl.insertBefore(s, anchor));
   activeSlideCount = count;
-  currentSlide = preserved;
+  currentSlide = 0;
   buildDots(count);
 }
 
@@ -218,7 +217,7 @@ function preloadImages(srcs) {
 function switchColor(color) {
   if (color.images) {
     preloadImages(color.images).then(imgs => {
-      const { slides, preserved } = createSlides(color.images.length);
+      const { slides } = createSlides(color.images.length);
       // Paint canvases while still offscreen
       imgs.forEach((img, i) => {
         const canvas = slides[i].querySelector('canvas');
@@ -228,15 +227,15 @@ function switchColor(color) {
       });
       // Now swap into DOM — fully painted, no flash
       usingRealPhotos = true;
-      commitSlides(slides, preserved, color.images.length);
+      commitSlides(slides, color.images.length);
     });
   } else {
     if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
       preloadImages(BASE_IMAGES).then(imgs => {
-        const { slides, preserved } = createSlides(BASE_IMAGES.length);
+        const { slides } = createSlides(BASE_IMAGES.length);
         // Paint + build masks offscreen, then commit
         usingRealPhotos = false;
-        commitSlides(slides, preserved, BASE_IMAGES.length);
+        commitSlides(slides, BASE_IMAGES.length);
         initBaseSlides();
       });
     } else {
@@ -326,7 +325,7 @@ function applyAllColors() {
 
 // Initialize with base white images
 const initResult = createSlides(BASE_IMAGES.length);
-commitSlides(initResult.slides, initResult.preserved, BASE_IMAGES.length);
+commitSlides(initResult.slides, BASE_IMAGES.length);
 initBaseSlides();
 </script>
 </body>
