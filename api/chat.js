@@ -88,9 +88,11 @@ module.exports = async function handler(req, res) {
       reply = reply.replace(recolorMatch[0], "").trim();
     }
 
-    // Fallback: if no recolor tag but user is asking about a color,
-    // try to detect color intent from the last user message
-    if (actions.length === 0 && messages.length >= 2) {
+    // Fallback: if no recolor tag but user is asking about a color
+    // ONLY trigger after a car has been generated (indicated by a prior [GENERATE] action in conversation)
+    const conversationText = messages.map(m => m.parts?.map(p => p.text || '').join(' ')).join(' ');
+    const carWasGenerated = conversationText.toLowerCase().includes('your car is ready') || conversationText.toLowerCase().includes('what wrap color');
+    if (actions.length === 0 && carWasGenerated) {
       const lastUserMsg = messages
         .filter((m) => m.role === "user")
         .pop();
