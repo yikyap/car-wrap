@@ -42,6 +42,12 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .confirm-btn.no { background: #333; color: #fff; }
 .confirm-btn:hover { opacity: 0.8; }
 .confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.chat-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
+.chat-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; border: 2px solid transparent; cursor: pointer; transition: transform 0.12s, border-color 0.12s; position: relative; }
+.chat-swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,0.5); }
+.chat-swatch-label { font-size: 9px; color: #999; text-align: center; margin-top: 2px; line-height: 1.1; }
+.chat-custom-color { grid-column: span 6; margin-top: 4px; font-size: 11px; color: #888; text-align: center; cursor: pointer; padding: 6px; border: 0.5px dashed #444; border-radius: 6px; transition: all 0.15s; }
+.chat-custom-color:hover { color: #ccc; border-color: #666; }
 .typing { align-self: flex-start; padding: 12px 16px; }
 .typing span { display: inline-block; width: 6px; height: 6px; background: #555; border-radius: 50%; animation: typingDot 1.4s infinite; margin-right: 3px; }
 .typing span:nth-child(2) { animation-delay: 0.2s; }
@@ -410,7 +416,7 @@ function addMessageWithConfirm(text, carDescription) {
     chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
     try {
       await generateFromDescription(carDescription);
-      addMessage('Your car is ready! What wrap color would you like to see?', 'bot');
+      addMessageWithPalette('Your car is ready! Pick a wrap color or describe your own:');
       chatHistory.push({ role: 'model', parts: [{ text: 'Your car is ready! What wrap color would you like to see?' }] });
     } catch (err) {
       addMessage('Generation failed: ' + err.message, 'bot');
@@ -441,6 +447,72 @@ function addMessageWithConfirm(text, carDescription) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+const PALETTE_COLORS = [
+  { name: 'Matte Black', hex: '#0a0a0a', finish: 'Matte' },
+  { name: 'Pearl White', hex: '#f5f5f5', finish: 'Gloss' },
+  { name: 'Midnight Blue', hex: '#1a2744', finish: 'Gloss' },
+  { name: 'Racing Red', hex: '#cc1a1a', finish: 'Gloss' },
+  { name: 'Nardo Grey', hex: '#8a8f94', finish: 'Matte' },
+  { name: 'Forest Green', hex: '#2a4a2a', finish: 'Satin' },
+  { name: 'Sunflower', hex: '#d4a017', finish: 'Gloss' },
+  { name: 'Royal Purple', hex: '#5a1a8a', finish: 'Gloss' },
+  { name: 'Rose Gold', hex: '#b87868', finish: 'Satin' },
+  { name: 'Burnt Orange', hex: '#c4651a', finish: 'Gloss' },
+  { name: 'Chrome Silver', hex: '#c0c0c0', finish: 'Chrome' },
+  { name: 'Teal', hex: '#1a6a6a', finish: 'Satin' },
+];
+
+function addMessageWithPalette(text) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = text;
+
+  const palette = document.createElement('div');
+  palette.className = 'chat-palette';
+
+  PALETTE_COLORS.forEach(pc => {
+    const wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+
+    const swatch = document.createElement('div');
+    swatch.className = 'chat-swatch';
+    swatch.style.background = pc.hex;
+    if (pc.hex === '#f5f5f5') swatch.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
+    if (pc.hex === '#0a0a0a') swatch.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
+    swatch.title = pc.name;
+    swatch.onclick = () => {
+      palette.remove();
+      customRow.remove();
+      addMessage(pc.name, 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: pc.name }] });
+      addRecolorConfirm(pc.name + ' — want me to generate it?', pc.name, pc.finish);
+    };
+
+    const label = document.createElement('div');
+    label.className = 'chat-swatch-label';
+    label.textContent = pc.name;
+
+    wrap.appendChild(swatch);
+    wrap.appendChild(label);
+    palette.appendChild(wrap);
+  });
+
+  const customRow = document.createElement('div');
+  customRow.className = 'chat-custom-color';
+  customRow.textContent = 'Or describe your own color...';
+  customRow.onclick = () => {
+    palette.remove();
+    customRow.remove();
+    chatInput.placeholder = 'Type a color name, e.g. "midnight purple metallic"...';
+    chatInput.focus();
+  };
+
+  div.appendChild(palette);
+  div.appendChild(customRow);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 function addRecolorConfirm(text, colorName, finishName) {
   const div = document.createElement('div');
   div.className = 'msg bot';
@@ -465,7 +537,7 @@ function addRecolorConfirm(text, colorName, finishName) {
       } else {
         switchColor(color);
       }
-      addMessage('Here it is! Want to try another color?', 'bot');
+      addMessageWithPalette('Here it is! Want to try another color?');
       chatHistory.push({ role: 'model', parts: [{ text: 'Here it is! Want to try another color?' }] });
     } catch (err) {
       addMessage('Recolor failed: ' + err.message, 'bot');
