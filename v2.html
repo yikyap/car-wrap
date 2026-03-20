@@ -379,6 +379,7 @@ async function generateViews() {
     const parsed = JSON.parse(text);
     await displayGeneratedImages(parsed.images);
     customCarDescription = parsed.carDescription || null;
+    baseCarDescription = customCarDescription;
     Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
     const desc = customCarDescription || 'Your car';
     const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
@@ -401,6 +402,7 @@ async function generateFromDescription(carDesc) {
     const parsed = JSON.parse(text);
     await displayGeneratedImages(parsed.images);
     customCarDescription = carDesc;
+    baseCarDescription = carDesc;
     Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
     const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
     document.getElementById('badge').textContent = shortDesc;
@@ -845,6 +847,9 @@ function startUpload() {
   document.getElementById('chat-file').click();
 }
 
+// === Running description — accumulates across services ===
+let baseCarDescription = null; // original car before any services
+
 // === Tint selection ===
 const TINT_OPTIONS = [
   { pct: '5%', label: 'Limo', desc: 'Darkest' },
@@ -860,7 +865,6 @@ function showTintOptions() {
 
   const section = document.createElement('div');
   section.className = 'palette-section';
-
   const grid = document.createElement('div');
   grid.className = 'tint-grid';
 
@@ -872,34 +876,7 @@ function showTintOptions() {
       section.remove();
       addMessage(t.pct + ' tint', 'user');
       chatHistory.push({ role: 'user', parts: [{ text: t.pct + ' window tint' }] });
-
-      // Confirm tint
-      const msg = document.createElement('div');
-      msg.className = 'msg bot';
-      msg.textContent = t.pct + ' tint on all windows — want me to apply it?';
-      const btns = document.createElement('div');
-      btns.className = 'confirm-btns';
-      const yesBtn = document.createElement('button');
-      yesBtn.className = 'confirm-btn yes';
-      yesBtn.textContent = 'Yes, apply it!';
-      yesBtn.onclick = async () => {
-        yesBtn.disabled = true; yesBtn.textContent = 'Applying...';
-        btns.remove();
-        // Recolor with tint added to description
-        const tintDesc = customCarDescription + '. Apply ' + t.pct + ' window tint to all side and rear windows.';
-        try {
-          await recolorWithDescription(tintDesc, st.color.name, st.finish.name);
-          addMessage('Tint applied! Looking sharp.', 'bot');
-          chatHistory.push({ role: 'model', parts: [{ text: 'Tint applied!' }] });
-          proceedToNextService('tint');
-        } catch (err) {
-          addMessage('Failed to apply tint: ' + err.message, 'bot');
-        }
-      };
-      btns.appendChild(yesBtn);
-      msg.appendChild(btns);
-      chatMessages.appendChild(msg);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+      applyTint(t.pct);
     };
     grid.appendChild(opt);
   });
@@ -907,6 +884,40 @@ function showTintOptions() {
   section.appendChild(grid);
   chatMessages.appendChild(section);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function applyTint(pct) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = pct + ' tint on all windows — applying now...';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  const tintDesc = customCarDescription + '. Apply ' + pct + ' window tint to all side and rear windows.';
+  try {
+    await recolorWithDescription(tintDesc, st.color.name, st.finish.name);
+    msg.textContent = pct + ' tint applied! Does this look right?';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'confirm-btn yes';
+    yesBtn.textContent = 'Looks good!';
+    yesBtn.onclick = () => { btns.remove(); proceedToNextService('tint'); };
+    const noBtn = document.createElement('button');
+    noBtn.className = 'confirm-btn no';
+    noBtn.textContent = 'Try different %';
+    noBtn.onclick = () => {
+      btns.remove();
+      // Revert description to before tint
+      customCarDescription = customCarDescription.replace(/\. Apply \d+% window tint.*$/, '');
+      showTintOptions();
+    };
+    btns.appendChild(yesBtn);
+    btns.appendChild(noBtn);
+    msg.appendChild(btns);
+  } catch (err) {
+    msg.textContent = 'Failed to apply tint: ' + err.message;
+  }
 }
 
 // === Powder coat selection ===
@@ -929,7 +940,6 @@ function showPowderCoatOptions() {
 
   const section = document.createElement('div');
   section.className = 'palette-section';
-
   const title = document.createElement('div');
   title.className = 'palette-title';
   title.textContent = 'Powder Coat Colors';
@@ -949,32 +959,7 @@ function showPowderCoatOptions() {
       section.remove();
       addMessage(pc.name + ' wheels', 'user');
       chatHistory.push({ role: 'user', parts: [{ text: pc.name + ' powder coated wheels' }] });
-
-      const msg = document.createElement('div');
-      msg.className = 'msg bot';
-      msg.textContent = pc.name + ' powder coat on the wheels — want me to apply it?';
-      const btns = document.createElement('div');
-      btns.className = 'confirm-btns';
-      const yesBtn = document.createElement('button');
-      yesBtn.className = 'confirm-btn yes';
-      yesBtn.textContent = 'Yes, apply it!';
-      yesBtn.onclick = async () => {
-        yesBtn.disabled = true; yesBtn.textContent = 'Applying...';
-        btns.remove();
-        const powderDesc = customCarDescription + '. The wheels are now ' + pc.name + ' powder coated.';
-        try {
-          await recolorWithDescription(powderDesc, st.color.name, st.finish.name);
-          addMessage('Wheels updated! Nice choice.', 'bot');
-          chatHistory.push({ role: 'model', parts: [{ text: 'Wheels updated!' }] });
-          proceedToNextService('powder');
-        } catch (err) {
-          addMessage('Failed to update wheels: ' + err.message, 'bot');
-        }
-      };
-      btns.appendChild(yesBtn);
-      msg.appendChild(btns);
-      chatMessages.appendChild(msg);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+      applyPowderCoat(pc.name);
     };
     const label = document.createElement('div');
     label.className = 'powder-label';
@@ -987,6 +972,39 @@ function showPowderCoatOptions() {
   section.appendChild(grid);
   chatMessages.appendChild(section);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function applyPowderCoat(colorName) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = colorName + ' powder coat — applying now...';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  const powderDesc = customCarDescription + '. The wheels are now ' + colorName + ' powder coated.';
+  try {
+    await recolorWithDescription(powderDesc, st.color.name, st.finish.name);
+    msg.textContent = colorName + ' wheels applied! Does this look right?';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'confirm-btn yes';
+    yesBtn.textContent = 'Looks good!';
+    yesBtn.onclick = () => { btns.remove(); proceedToNextService('powder'); };
+    const noBtn = document.createElement('button');
+    noBtn.className = 'confirm-btn no';
+    noBtn.textContent = 'Try different color';
+    noBtn.onclick = () => {
+      btns.remove();
+      customCarDescription = customCarDescription.replace(/\. The wheels are now.*powder coated\.$/, '');
+      showPowderCoatOptions();
+    };
+    btns.appendChild(yesBtn);
+    btns.appendChild(noBtn);
+    msg.appendChild(btns);
+  } catch (err) {
+    msg.textContent = 'Failed to update wheels: ' + err.message;
+  }
 }
 
 // Recolor with a modified description (for tint/powder)
@@ -1015,22 +1033,52 @@ function proceedToNextService(justCompleted) {
 
   for (const svc of SERVICE_ORDER) {
     if (selectedServices.has(svc) && !completedServices.has(svc)) {
-      if (svc === 'wrap') {
-        // Wrap is handled by the main flow — palette shows after car generation
-        return;
-      } else if (svc === 'tint') {
-        showTintOptions();
-        return;
-      } else if (svc === 'powder') {
-        showPowderCoatOptions();
-        return;
-      }
+      if (svc === 'wrap') return;
+      if (svc === 'tint') { showTintOptions(); return; }
+      if (svc === 'powder') { showPowderCoatOptions(); return; }
     }
   }
 
-  // All services done
-  addMessage('All done! Here\'s your fully customized ride. Want to get a quote?', 'bot');
-  chatHistory.push({ role: 'model', parts: [{ text: 'All done! Want to get a quote?' }] });
+  // All services done — final confirmation
+  showFinalConfirmation();
+}
+
+function showFinalConfirmation() {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = 'Here\'s your fully customized ride! Everything look good?';
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Looks perfect!';
+  yesBtn.onclick = () => {
+    btns.remove();
+    addMessage('Ready to get a quote? Drop your contact info and we\'ll reach out!', 'bot');
+    chatHistory.push({ role: 'model', parts: [{ text: 'Ready for a quote?' }] });
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Start customizing over';
+  noBtn.onclick = () => {
+    btns.remove();
+    // Reset to post-generation state
+    completedServices.clear();
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    customCarDescription = baseCarDescription;
+    addMessage('No problem! Let\'s start fresh with your car.', 'bot');
+    // Regenerate original car
+    if (selectedServices.has('wrap')) {
+      addMessageWithPalette('Pick a wrap color or describe your own:');
+    } else {
+      proceedToNextService(null);
+    }
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  msg.appendChild(btns);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // === Init ===
