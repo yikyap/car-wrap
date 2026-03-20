@@ -101,28 +101,24 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   h1, .sub { display: none; }
   .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
 
-  /* Carousel: hidden initially, expands when car is generated */
-  .carousel { border-radius: 0; aspect-ratio: 16/9; flex-shrink: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease, flex 0.4s ease; }
-  .carousel.mobile-visible { max-height: 50vh; flex: 0 0 auto; }
-  /* When chat is minimized, carousel gets more space */
-  .carousel.mobile-expanded { max-height: 65vh; }
+  /* Carousel: hidden initially, shown after generation */
+  .carousel { border-radius: 0; flex-shrink: 0; height: 0; overflow: hidden; transition: height 0.4s ease; aspect-ratio: auto; }
+  .carousel.mobile-visible { height: 35vh; }
+  .carousel.mobile-visible.mobile-expanded { height: 60vh; }
 
-  /* Chat panel: fills remaining space, collapsible */
-  .chat-panel { border-radius: 16px 16px 0 0; border: none; flex: 1; max-height: none; min-height: 0; display: flex; flex-direction: column; transition: flex 0.35s ease, min-height 0.35s ease; background: #141414; position: relative; }
-  /* Minimized state: just input bar + toggle */
-  .chat-panel.minimized { flex: 0 0 auto; min-height: auto; }
-  .chat-panel.minimized .chat-messages { display: none; }
-  .chat-panel.minimized .file-preview { display: none !important; }
+  /* Chat panel */
+  .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; overflow: hidden; background: #141414; }
   .chat-messages { padding: 0.75rem; }
 
-  /* Pull-up handle to expand/collapse */
-  .sheet-handle { display: block; width: 36px; height: 4px; background: #444; border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0; cursor: pointer; transition: background 0.15s; }
-  .sheet-handle:active { background: #888; }
+  /* Sheet handle — always inside chat panel top */
+  .sheet-handle { display: block; width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0; cursor: pointer; }
 
-  /* Chat toggle bar (shows last message preview when minimized) */
-  .chat-toggle-bar { display: none; padding: 0 1rem 0.25rem; }
+  /* Minimized chat toggle bar */
+  .chat-toggle-bar { display: none; padding: 6px 1rem; cursor: pointer; }
   .chat-panel.minimized .chat-toggle-bar { display: flex; align-items: center; gap: 8px; }
-  .chat-toggle-preview { font-size: 12px; color: #777; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-panel.minimized .chat-messages { display: none; }
+  .chat-panel.minimized .file-preview { display: none !important; }
+  .chat-toggle-preview { font-size: 13px; color: #888; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-toggle-badge { background: #333; color: #aaa; font-size: 10px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
 
   .msg { font-size: 14px; max-width: 90%; }
@@ -409,51 +405,48 @@ function displayGeneratedImages(images) {
     });
     usingRealPhotos = true; currentSlide = 0;
     commitSlides(slides, 0, imgElements.length);
-    // Show carousel on mobile
+    // On mobile: show carousel and minimize chat so user sees the result
     showMobileCarousel();
+    minimizeMobileChat();
   });
 }
 
+const isMobile = () => window.innerWidth <= 800;
+
 function showMobileCarousel() {
-  if (window.innerWidth <= 800) {
-    document.getElementById('carousel').classList.add('mobile-visible');
-    document.getElementById('sheet-handle').style.display = 'block';
-  }
+  if (!isMobile()) return;
+  const carousel = document.getElementById('carousel');
+  carousel.classList.add('mobile-visible');
+  document.getElementById('sheet-handle').style.display = 'block';
 }
 
 function minimizeMobileChat() {
-  if (window.innerWidth <= 800) {
-    const panel = document.getElementById('chat-panel');
-    const carousel = document.getElementById('carousel');
-    panel.classList.add('minimized');
-    carousel.classList.add('mobile-expanded');
-    // Update preview with last bot message
-    const msgs = chatMessages.querySelectorAll('.msg.bot');
-    if (msgs.length > 0) {
-      const lastMsg = msgs[msgs.length - 1].textContent.substring(0, 60);
-      document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
-    }
+  if (!isMobile()) return;
+  const panel = document.getElementById('chat-panel');
+  const carousel = document.getElementById('carousel');
+  panel.classList.add('minimized');
+  carousel.classList.add('mobile-expanded');
+  // Update preview text
+  const msgs = chatMessages.querySelectorAll('.msg.bot');
+  if (msgs.length > 0) {
+    const lastMsg = msgs[msgs.length - 1].textContent.substring(0, 50);
+    document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
   }
 }
 
 function expandMobileChat() {
-  if (window.innerWidth <= 800) {
-    const panel = document.getElementById('chat-panel');
-    const carousel = document.getElementById('carousel');
-    panel.classList.remove('minimized');
-    carousel.classList.remove('mobile-expanded');
-    // Scroll chat to bottom after expand
-    setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
-  }
+  if (!isMobile()) return;
+  const panel = document.getElementById('chat-panel');
+  const carousel = document.getElementById('carousel');
+  panel.classList.remove('minimized');
+  carousel.classList.remove('mobile-expanded');
+  setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
 }
 
 function toggleMobileChat() {
   const panel = document.getElementById('chat-panel');
-  if (panel.classList.contains('minimized')) {
-    expandMobileChat();
-  } else {
-    minimizeMobileChat();
-  }
+  if (panel.classList.contains('minimized')) expandMobileChat();
+  else minimizeMobileChat();
 }
 
 function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
