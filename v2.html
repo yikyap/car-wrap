@@ -412,9 +412,7 @@ let mobileMinimized = false;
 function showMobileCarousel() {
   if (!isMobile()) return;
   const carousel = document.getElementById('carousel');
-  // Force carousel visible with inline styles (overrides any CSS)
   carousel.style.display = 'block';
-  carousel.style.height = '40vh';
   carousel.style.width = '100%';
   carousel.style.position = 'relative';
   document.getElementById('sheet-handle').style.display = 'block';
@@ -423,14 +421,17 @@ function showMobileCarousel() {
 function minimizeMobileChat() {
   if (!isMobile()) return;
   mobileMinimized = true;
+  const panel = document.getElementById('chat-panel');
+  const carousel = document.getElementById('carousel');
   // Hide chat messages, show toggle bar
   chatMessages.style.display = 'none';
   document.getElementById('chat-toggle-bar').style.display = 'flex';
   const fp = document.getElementById('file-preview');
   if (fp) fp.style.display = 'none';
-  // Give carousel more room
-  const carousel = document.getElementById('carousel');
-  carousel.style.height = '60vh';
+  // Carousel fills remaining space, chat panel shrinks to content
+  carousel.style.flex = '1';
+  carousel.style.height = 'auto';
+  panel.style.flex = '0 0 auto';
   // Update preview text
   const msgs = document.querySelectorAll('#chat-messages .msg.bot');
   if (msgs.length > 0) {
@@ -442,12 +443,15 @@ function minimizeMobileChat() {
 function expandMobileChat() {
   if (!isMobile()) return;
   mobileMinimized = false;
+  const panel = document.getElementById('chat-panel');
+  const carousel = document.getElementById('carousel');
   // Show chat messages, hide toggle bar
   chatMessages.style.display = 'flex';
   document.getElementById('chat-toggle-bar').style.display = 'none';
-  // Shrink carousel
-  const carousel = document.getElementById('carousel');
+  // Carousel fixed height, chat fills rest
+  carousel.style.flex = '0 0 auto';
   carousel.style.height = '40vh';
+  panel.style.flex = '1';
   setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
 }
 
@@ -465,7 +469,9 @@ async function generateViews() {
   minimizeMobileChat();
   showLoading('Analyzing your car and generating showroom views...');
   try {
-    const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }) });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }), signal: controller.signal }).finally(() => clearTimeout(timeout));
     const text = await resp.text();
     if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
     const parsed = JSON.parse(text);
@@ -485,11 +491,14 @@ async function generateFromDescription(carDesc) {
   minimizeMobileChat();
   showLoading('Generating your car in the showroom...');
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
     const resp = await fetch('/api/generate-from-description', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ carDescription: carDesc }),
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
     console.log('generate-from-description response status:', resp.status);
     const text = await resp.text();
     if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
@@ -502,6 +511,8 @@ async function generateFromDescription(carDesc) {
     document.getElementById('badge').textContent = shortDesc;
   } catch (err) {
     console.error('generateFromDescription error:', err);
+    if (err.name === 'AbortError') throw new Error('Generation timed out — please try again');
+    if (err.message === 'Load failed') throw new Error('Connection lost — please try again');
     throw err;
   } finally {
     hideLoading();
