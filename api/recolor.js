@@ -1,16 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
-const { generateImageWithRetry } = require("./_retry");
+const { generateAllImages } = require("./_generate-images");
 const fs = require("fs");
 const path = require("path");
-
-const ANGLE_PROMPTS = [
-  "front view, straight on, headlights visible, low angle",
-  "passenger side profile, full side view facing right",
-  "rear view, straight on, taillights visible",
-  "driver side profile, full side view facing left",
-  "front three-quarter view from above, looking down at hood and driver side",
-  "rear three-quarter view from above, looking down at trunk and passenger side",
-];
 
 let BG_IMAGE = null;
 let REFERENCE_IMAGES = null;
@@ -33,9 +24,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    loadImages();
-  } catch (err) {
+  try { loadImages(); } catch (err) {
     return res.status(500).json({ error: "Failed to load reference images: " + err.message });
   }
 
@@ -53,36 +42,10 @@ module.exports = async function handler(req, res) {
   const finish = finishName || "Gloss";
 
   try {
-    const results = await Promise.all(
-      REFERENCE_IMAGES.map((ref, i) =>
-        generateImageWithRetry(ai, [
-          { inlineData: { data: ref.data, mimeType: ref.mimeType } },
-          { inlineData: { data: BG_IMAGE.data, mimeType: BG_IMAGE.mimeType } },
-          {
-            text: `Generate a photorealistic showroom image of the following car:
-
-${carDescription}
-
-IMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else about the car identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.
-
-Use the first image as a reference for the exact camera angle and composition: ${ANGLE_PROMPTS[i]}.
-Use the second image as the exact showroom background — dark studio with subtle center spotlight on dark concrete floor.
-
-The image should look like a professional car photograph, not a rendering. No text or watermarks.`,
-          },
-        ])
-      )
+    const images = await generateAllImages(
+      ai, REFERENCE_IMAGES, BG_IMAGE,
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
     );
-
-    const images = results.map((r) => {
-      const parts = r.candidates?.[0]?.content?.parts || [];
-      const imgPart = parts.find((p) => p.inlineData);
-      if (!imgPart) throw new Error("No image in response");
-      return {
-        data: imgPart.inlineData.data,
-        mimeType: imgPart.inlineData.mimeType,
-      };
-    });
 
     res.status(200).json({ images });
   } catch (err) {
@@ -91,6 +54,4 @@ The image should look like a professional car photograph, not a rendering. No te
   }
 };
 
-module.exports.config = {
-  maxDuration: 60,
-};
+module.exports.config = { maxDuration: 60 };
