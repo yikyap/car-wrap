@@ -95,7 +95,33 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .file-preview-inner { display: flex; align-items: center; gap: 6px; background: #222; padding: 6px 10px; border-radius: 8px; font-size: 11px; color: #8c8; }
 .file-preview-inner button { background: none; border: none; color: #666; cursor: pointer; font-size: 14px; padding: 0 2px; }
 
-@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .chat-panel { max-height: 400px; } }
+/* === Mobile layout === */
+@media (max-width: 800px) {
+  body { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  h1, .sub { display: none; }
+  .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
+
+  /* Carousel: hidden initially, slides in when car is generated */
+  .carousel { border-radius: 0; aspect-ratio: 16/9; flex-shrink: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+  .carousel.mobile-visible { max-height: 45vh; }
+
+  /* Chat panel: fills remaining space */
+  .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; }
+  .chat-messages { padding: 0.75rem; }
+
+  /* Bottom sheet handle */
+  .sheet-handle { display: block; width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 8px auto 4px; flex-shrink: 0; }
+
+  .msg { font-size: 14px; max-width: 90%; }
+  .chat-input-area { padding: 0.5rem 0.75rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
+  .chat-input { font-size: 16px; /* prevents iOS zoom */ }
+  .chat-palette { max-width: 100%; gap: 8px; }
+  .chat-swatch-label { font-size: 8px; }
+  .powder-palette { max-width: 100%; }
+  .service-btn { padding: 10px 12px; }
+  .confirm-btns { flex-wrap: wrap; }
+  .tint-grid { justify-content: center; }
+}
 </style>
 </head>
 <body>
@@ -109,6 +135,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
     <div class="badge" id="badge">Matte black · Tesla Model 3</div>
   </div>
   <div class="chat-panel">
+    <div class="sheet-handle" style="display:none"></div>
     <div class="chat-messages" id="chat-messages">
       <div class="msg bot" id="welcome-msg">Hey! Welcome to our shop. What services are you interested in?
         <div class="service-grid" id="service-grid">
@@ -363,7 +390,16 @@ function displayGeneratedImages(images) {
     });
     usingRealPhotos = true; currentSlide = 0;
     commitSlides(slides, 0, imgElements.length);
+    // Show carousel on mobile
+    showMobileCarousel();
   });
+}
+
+function showMobileCarousel() {
+  if (window.innerWidth <= 800) {
+    document.getElementById('carousel').classList.add('mobile-visible');
+    document.querySelector('.sheet-handle').style.display = 'block';
+  }
 }
 
 function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
@@ -1082,7 +1118,7 @@ function showFinalConfirmation() {
 }
 
 // === Init ===
-// Load matte black Tesla as default showcase
+// Load matte black Tesla as default showcase (desktop only on init)
 const matteBlackImages = COLORS.find(c => c.name === 'Matte black').images;
 preloadImages(matteBlackImages).then(imgs => {
   const { slides, preserved } = createSlides(imgs.length);
@@ -1094,6 +1130,10 @@ preloadImages(matteBlackImages).then(imgs => {
   });
   usingRealPhotos = true;
   commitSlides(slides, preserved, imgs.length);
+  // On mobile, carousel starts hidden — only shows after generation
+  if (window.innerWidth <= 800) {
+    document.getElementById('carousel').classList.remove('mobile-visible');
+  }
 });
 
 // Focus chat input
