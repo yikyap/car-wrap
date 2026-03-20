@@ -101,20 +101,16 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   h1, .sub { display: none; }
   .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
 
-  /* Carousel: hidden initially via display:none, shown by JS */
-  .carousel { border-radius: 0; flex-shrink: 0; display: none; overflow: hidden; }
+  /* Carousel: always visible on top, fixed height */
+  .carousel { border-radius: 0; flex: 0 0 auto; height: 35vh; overflow: hidden; }
 
-  /* Chat panel */
+  /* Chat panel: always visible below, fills rest */
   .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; overflow: hidden; background: #141414; }
   .chat-messages { padding: 0.75rem; }
 
-  /* Sheet handle */
-  .sheet-handle { display: block; width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0; cursor: pointer; }
-
-  /* Toggle bar for minimized chat */
-  .chat-toggle-bar { padding: 6px 1rem; cursor: pointer; }
-  .chat-toggle-preview { font-size: 13px; color: #888; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chat-toggle-badge { background: #333; color: #aaa; font-size: 10px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+  /* Hide unused elements */
+  .sheet-handle { display: none !important; }
+  .chat-toggle-bar { display: none !important; }
 
   .msg { font-size: 14px; max-width: 90%; }
   .chat-input-area { padding: 0.5rem 0.75rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
@@ -141,11 +137,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
     <div class="badge" id="badge">Matte black · Tesla Model 3</div>
   </div>
   <div class="chat-panel" id="chat-panel">
-    <div class="sheet-handle" id="sheet-handle" style="display:none" onclick="toggleMobileChat()"></div>
-    <div class="chat-toggle-bar" id="chat-toggle-bar" style="display:none" onclick="toggleMobileChat()">
-      <span class="chat-toggle-preview" id="chat-toggle-preview">Tap to expand chat</span>
-      <span class="chat-toggle-badge">Chat</span>
-    </div>
+    <div class="sheet-handle" id="sheet-handle" style="display:none"></div>
     <div class="chat-messages" id="chat-messages">
       <div class="msg bot" id="welcome-msg">Hey! Welcome to our shop. What services are you interested in?
         <div class="service-grid" id="service-grid">
@@ -400,70 +392,12 @@ function displayGeneratedImages(images) {
     });
     usingRealPhotos = true; currentSlide = 0;
     commitSlides(slides, 0, imgElements.length);
-    // On mobile: show carousel and minimize chat so user sees the result
-    showMobileCarousel();
-    minimizeMobileChat();
   });
 }
 
-const isMobile = () => window.innerWidth <= 800;
-let mobileMinimized = false;
-
-function showMobileCarousel() {
-  if (!isMobile()) return;
-  const carousel = document.getElementById('carousel');
-  const panel = document.getElementById('chat-panel');
-  // Show carousel at fixed height, chat fills remaining space
-  carousel.style.display = 'block';
-  carousel.style.height = '40vh';
-  carousel.style.flex = '0 0 auto';
-  carousel.style.width = '100%';
-  carousel.style.position = 'relative';
-  panel.style.flex = '1';
-  document.getElementById('sheet-handle').style.display = 'block';
-}
-
-function minimizeMobileChat() {
-  if (!isMobile()) return;
-  mobileMinimized = true;
-  const panel = document.getElementById('chat-panel');
-  const carousel = document.getElementById('carousel');
-  // Hide chat messages, show toggle bar
-  chatMessages.style.display = 'none';
-  document.getElementById('chat-toggle-bar').style.display = 'flex';
-  var fp = document.getElementById('file-preview');
-  if (fp) fp.style.display = 'none';
-  // Carousel expands, chat shrinks to just input
-  carousel.style.flex = '1';
-  carousel.style.height = 'auto';
-  panel.style.flex = '0 0 auto';
-  // Update preview text
-  var msgs = document.querySelectorAll('#chat-messages .msg.bot');
-  if (msgs.length > 0) {
-    var lastMsg = msgs[msgs.length - 1].textContent.substring(0, 50);
-    document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
-  }
-}
-
-function expandMobileChat() {
-  if (!isMobile()) return;
-  mobileMinimized = false;
-  const panel = document.getElementById('chat-panel');
-  const carousel = document.getElementById('carousel');
-  // Show chat messages, hide toggle bar
-  chatMessages.style.display = 'flex';
-  document.getElementById('chat-toggle-bar').style.display = 'none';
-  // Carousel fixed, chat fills rest
-  carousel.style.flex = '0 0 auto';
-  carousel.style.height = '40vh';
-  panel.style.flex = '1';
-  setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
-}
-
-function toggleMobileChat() {
-  if (mobileMinimized) expandMobileChat();
-  else minimizeMobileChat();
-}
+// Mobile helpers (no-ops now — carousel always visible via CSS)
+function showMobileCarousel() {}
+function minimizeMobileChat() {}
 
 function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
 
@@ -1190,7 +1124,7 @@ function showFinalConfirmation() {
 }
 
 // === Init ===
-// Load matte black Tesla as default showcase (desktop only on init)
+// Load matte black Tesla as default showcase
 const matteBlackImages = COLORS.find(c => c.name === 'Matte black').images;
 preloadImages(matteBlackImages).then(imgs => {
   const { slides, preserved } = createSlides(imgs.length);
@@ -1202,7 +1136,6 @@ preloadImages(matteBlackImages).then(imgs => {
   });
   usingRealPhotos = true;
   commitSlides(slides, preserved, imgs.length);
-  // On mobile, carousel stays hidden (display:none via CSS) until generation
 });
 
 // Focus chat input
