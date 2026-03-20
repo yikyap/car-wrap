@@ -629,13 +629,15 @@ function showTyping() {
 }
 function hideTyping() { const t = document.getElementById('typing-indicator'); if (t) t.remove(); }
 
-// File attachment
+// File attachment — auto-send when a photo is selected
 document.getElementById('chat-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   pendingFile = file;
   document.getElementById('file-preview').style.display = 'block';
   document.getElementById('file-preview-name').textContent = file.name;
+  // Auto-send the photo
+  sendMessage();
 });
 
 function clearAttachment() {
@@ -653,21 +655,32 @@ async function sendMessage() {
   const hasFile = !!pendingFile;
   if (!text && !hasFile) return;
 
-  // Show user message
-  const displayText = hasFile ? (text || 'Uploaded a photo') + (hasFile ? ' [photo attached]' : '') : text;
-  addMessage(text || 'Uploaded a photo', 'user');
-  chatInput.value = '';
-
-  // Build message parts
-  const parts = [];
+  // If a photo is uploaded, go straight to generate flow
   if (hasFile) {
+    addMessage('Uploaded a photo', 'user');
+    chatInput.value = '';
     const resized = await resizeImage(pendingFile, 1024);
     uploadedPhoto = resized;
-    parts.push({ inlineData: { data: resized.base64, mimeType: resized.mimeType } });
     clearAttachment();
+    chatHistory.push({ role: 'user', parts: [{ text: 'I uploaded a photo of my car.' }] });
+    addMessage('Analyzing your car and generating showroom views...', 'bot');
+    chatHistory.push({ role: 'model', parts: [{ text: 'Analyzing your car and generating showroom views...' }] });
+    try {
+      await generateViews();
+      addPostGenerateConfirm(customCarDescription);
+      chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
+    } catch (err) {
+      addMessage('Generation failed: ' + err.message, 'bot');
+    }
+    return;
   }
-  if (text) parts.push({ text });
-  else if (hasFile) parts.push({ text: 'Here is a photo of my car.' });
+
+  // Normal text message
+  addMessage(text, 'user');
+  chatInput.value = '';
+
+  const parts = [];
+  parts.push({ text });
 
   chatHistory.push({ role: 'user', parts });
 
