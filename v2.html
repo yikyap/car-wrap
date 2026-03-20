@@ -86,7 +86,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .chat-input { flex: 1; background: #111; border: 0.5px solid #333; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; font-family: inherit; outline: none; resize: none; min-height: 40px; max-height: 100px; }
 .chat-input:focus { border-color: #555; }
 .chat-input::placeholder { color: #555; }
-.chat-file-label { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: #666; transition: all 0.15s; flex-shrink: 0; }
+.chat-file-label { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: #666; transition: all 0.15s; flex-shrink: 0; }
 .chat-file-label:hover { color: #aaa; background: #222; }
 .chat-send { width: 36px; height: 36px; border-radius: 8px; background: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
 .chat-send:hover { opacity: 0.85; }
@@ -101,20 +101,35 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   h1, .sub { display: none; }
   .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
 
-  /* Carousel: hidden initially, slides in when car is generated */
-  .carousel { border-radius: 0; aspect-ratio: 16/9; flex-shrink: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
-  .carousel.mobile-visible { max-height: 45vh; }
+  /* Carousel: hidden initially, expands when car is generated */
+  .carousel { border-radius: 0; aspect-ratio: 16/9; flex-shrink: 0; max-height: 0; overflow: hidden; transition: max-height 0.4s ease, flex 0.4s ease; }
+  .carousel.mobile-visible { max-height: 50vh; flex: 0 0 auto; }
+  /* When chat is minimized, carousel gets more space */
+  .carousel.mobile-expanded { max-height: 65vh; }
 
-  /* Chat panel: fills remaining space */
-  .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; }
+  /* Chat panel: fills remaining space, collapsible */
+  .chat-panel { border-radius: 16px 16px 0 0; border: none; flex: 1; max-height: none; min-height: 0; display: flex; flex-direction: column; transition: flex 0.35s ease, min-height 0.35s ease; background: #141414; position: relative; }
+  /* Minimized state: just input bar + toggle */
+  .chat-panel.minimized { flex: 0 0 auto; min-height: auto; }
+  .chat-panel.minimized .chat-messages { display: none; }
+  .chat-panel.minimized .file-preview { display: none !important; }
   .chat-messages { padding: 0.75rem; }
 
-  /* Bottom sheet handle */
-  .sheet-handle { display: block; width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 8px auto 4px; flex-shrink: 0; }
+  /* Pull-up handle to expand/collapse */
+  .sheet-handle { display: block; width: 36px; height: 4px; background: #444; border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0; cursor: pointer; transition: background 0.15s; }
+  .sheet-handle:active { background: #888; }
+
+  /* Chat toggle bar (shows last message preview when minimized) */
+  .chat-toggle-bar { display: none; padding: 0 1rem 0.25rem; }
+  .chat-panel.minimized .chat-toggle-bar { display: flex; align-items: center; gap: 8px; }
+  .chat-toggle-preview { font-size: 12px; color: #777; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-toggle-badge { background: #333; color: #aaa; font-size: 10px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
 
   .msg { font-size: 14px; max-width: 90%; }
   .chat-input-area { padding: 0.5rem 0.75rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
-  .chat-input { font-size: 16px; /* prevents iOS zoom */ }
+  .chat-input { font-size: 16px; border-radius: 20px; padding: 10px 16px; background: #1e1e1e; border: 1px solid #2a2a2a; }
+  .chat-input:focus { border-color: #444; }
+  .chat-send { border-radius: 50%; width: 38px; height: 38px; }
   .chat-palette { max-width: 100%; gap: 8px; }
   .chat-swatch-label { font-size: 8px; }
   .powder-palette { max-width: 100%; }
@@ -134,8 +149,12 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
     <div class="dots" id="dots"></div>
     <div class="badge" id="badge">Matte black · Tesla Model 3</div>
   </div>
-  <div class="chat-panel">
-    <div class="sheet-handle" style="display:none"></div>
+  <div class="chat-panel" id="chat-panel">
+    <div class="sheet-handle" id="sheet-handle" style="display:none" onclick="toggleMobileChat()"></div>
+    <div class="chat-toggle-bar" onclick="toggleMobileChat()">
+      <span class="chat-toggle-preview" id="chat-toggle-preview">Tap to expand chat</span>
+      <span class="chat-toggle-badge">Chat</span>
+    </div>
     <div class="chat-messages" id="chat-messages">
       <div class="msg bot" id="welcome-msg">Hey! Welcome to our shop. What services are you interested in?
         <div class="service-grid" id="service-grid">
@@ -398,7 +417,42 @@ function displayGeneratedImages(images) {
 function showMobileCarousel() {
   if (window.innerWidth <= 800) {
     document.getElementById('carousel').classList.add('mobile-visible');
-    document.querySelector('.sheet-handle').style.display = 'block';
+    document.getElementById('sheet-handle').style.display = 'block';
+  }
+}
+
+function minimizeMobileChat() {
+  if (window.innerWidth <= 800) {
+    const panel = document.getElementById('chat-panel');
+    const carousel = document.getElementById('carousel');
+    panel.classList.add('minimized');
+    carousel.classList.add('mobile-expanded');
+    // Update preview with last bot message
+    const msgs = chatMessages.querySelectorAll('.msg.bot');
+    if (msgs.length > 0) {
+      const lastMsg = msgs[msgs.length - 1].textContent.substring(0, 60);
+      document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
+    }
+  }
+}
+
+function expandMobileChat() {
+  if (window.innerWidth <= 800) {
+    const panel = document.getElementById('chat-panel');
+    const carousel = document.getElementById('carousel');
+    panel.classList.remove('minimized');
+    carousel.classList.remove('mobile-expanded');
+    // Scroll chat to bottom after expand
+    setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
+  }
+}
+
+function toggleMobileChat() {
+  const panel = document.getElementById('chat-panel');
+  if (panel.classList.contains('minimized')) {
+    expandMobileChat();
+  } else {
+    minimizeMobileChat();
   }
 }
 
@@ -407,6 +461,8 @@ function updateBadge() { document.getElementById('badge').textContent = st.color
 // === Generate & Recolor ===
 async function generateViews() {
   if (!uploadedPhoto) return;
+  showMobileCarousel();
+  minimizeMobileChat();
   showLoading('Analyzing your car and generating showroom views...');
   try {
     const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }) });
@@ -425,6 +481,8 @@ async function generateViews() {
 
 async function generateFromDescription(carDesc) {
   console.log('generateFromDescription called with:', carDesc);
+  showMobileCarousel();
+  minimizeMobileChat();
   showLoading('Generating your car in the showroom...');
   try {
     const resp = await fetch('/api/generate-from-description', {
@@ -453,6 +511,7 @@ async function generateFromDescription(carDesc) {
 async function recolorCustomCar(color) {
   const cacheKey = color.name + '|' + st.finish.name;
   if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
+  minimizeMobileChat();
   showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
   try {
     const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
@@ -1045,6 +1104,7 @@ async function applyPowderCoat(colorName) {
 
 // Recolor with a modified description (for tint/powder)
 async function recolorWithDescription(desc, colorName, finishName) {
+  minimizeMobileChat();
   showLoading('Generating updated view...');
   try {
     const resp = await fetch('/api/recolor', {
