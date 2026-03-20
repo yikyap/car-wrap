@@ -412,9 +412,14 @@ let mobileMinimized = false;
 function showMobileCarousel() {
   if (!isMobile()) return;
   const carousel = document.getElementById('carousel');
+  const panel = document.getElementById('chat-panel');
+  // Show carousel at fixed height, chat fills remaining space
   carousel.style.display = 'block';
+  carousel.style.height = '40vh';
+  carousel.style.flex = '0 0 auto';
   carousel.style.width = '100%';
   carousel.style.position = 'relative';
+  panel.style.flex = '1';
   document.getElementById('sheet-handle').style.display = 'block';
 }
 
@@ -426,16 +431,16 @@ function minimizeMobileChat() {
   // Hide chat messages, show toggle bar
   chatMessages.style.display = 'none';
   document.getElementById('chat-toggle-bar').style.display = 'flex';
-  const fp = document.getElementById('file-preview');
+  var fp = document.getElementById('file-preview');
   if (fp) fp.style.display = 'none';
-  // Carousel fills remaining space, chat panel shrinks to content
+  // Carousel expands, chat shrinks to just input
   carousel.style.flex = '1';
   carousel.style.height = 'auto';
   panel.style.flex = '0 0 auto';
   // Update preview text
-  const msgs = document.querySelectorAll('#chat-messages .msg.bot');
+  var msgs = document.querySelectorAll('#chat-messages .msg.bot');
   if (msgs.length > 0) {
-    const lastMsg = msgs[msgs.length - 1].textContent.substring(0, 50);
+    var lastMsg = msgs[msgs.length - 1].textContent.substring(0, 50);
     document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
   }
 }
@@ -448,7 +453,7 @@ function expandMobileChat() {
   // Show chat messages, hide toggle bar
   chatMessages.style.display = 'flex';
   document.getElementById('chat-toggle-bar').style.display = 'none';
-  // Carousel fixed height, chat fills rest
+  // Carousel fixed, chat fills rest
   carousel.style.flex = '0 0 auto';
   carousel.style.height = '40vh';
   panel.style.flex = '1';
@@ -466,7 +471,6 @@ function updateBadge() { document.getElementById('badge').textContent = st.color
 async function generateViews() {
   if (!uploadedPhoto) return;
   showMobileCarousel();
-  minimizeMobileChat();
   showLoading('Analyzing your car and generating showroom views...');
   try {
     const controller = new AbortController();
@@ -488,7 +492,6 @@ async function generateViews() {
 async function generateFromDescription(carDesc) {
   console.log('generateFromDescription called with:', carDesc);
   showMobileCarousel();
-  minimizeMobileChat();
   showLoading('Generating your car in the showroom...');
   try {
     const controller = new AbortController();
@@ -522,7 +525,6 @@ async function generateFromDescription(carDesc) {
 async function recolorCustomCar(color) {
   const cacheKey = color.name + '|' + st.finish.name;
   if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
-  minimizeMobileChat();
   showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
   try {
     const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
@@ -1115,7 +1117,6 @@ async function applyPowderCoat(colorName) {
 
 // Recolor with a modified description (for tint/powder)
 async function recolorWithDescription(desc, colorName, finishName) {
-  minimizeMobileChat();
   showLoading('Generating updated view...');
   try {
     const resp = await fetch('/api/recolor', {

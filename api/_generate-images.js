@@ -49,18 +49,6 @@ Use the angle reference and showroom background provided.`,
   const heroImg = heroPartsResp.find((p) => p.inlineData);
   if (!heroImg) throw new Error("No hero image in response");
 
-  // Verify hero image itself for artifacts
-  const heroCheck = await verifyImage(ai, heroImg.inlineData, null);
-  if (!heroCheck.pass) {
-    console.log("Hero image failed verification: " + heroCheck.reason + ". Regenerating...");
-    const retryResult = await generateImageWithRetry(ai, heroParts);
-    const retryParts = retryResult.candidates?.[0]?.content?.parts || [];
-    const retryImg = retryParts.find((p) => p.inlineData);
-    if (retryImg) {
-      heroImg.inlineData = retryImg.inlineData;
-    }
-  }
-
   console.log("Hero image generated. Generating remaining 5 angles...");
 
   // Step 2: Generate remaining 5 angles
@@ -113,54 +101,6 @@ CRITICAL: The car must be the EXACT same make, model, and body shape as the refe
       mimeType: imgPart.inlineData.mimeType,
     };
   });
-
-  // Step 3: Verify all images for consistency AND artifacts
-  console.log("Verifying all images...");
-  const verifyResults = await Promise.all(
-    allImages.map((img, i) => {
-      if (i === HERO_INDEX) return Promise.resolve({ pass: true, index: i });
-      return verifyImage(ai, img, heroImg.inlineData).then((r) => ({ ...r, index: i }));
-    })
-  );
-
-  // Step 4: Regenerate failures
-  const failures = verifyResults.filter((v) => !v.pass);
-  if (failures.length > 0) {
-    console.log(`Regenerating ${failures.length} images: ${failures.map(f => 'angle ' + f.index + ' (' + f.reason + ')').join(', ')}`);
-    const regenResults = await Promise.all(
-      failures.map((f) => {
-        const i = f.index;
-        const parts = [];
-        if (userPhoto) {
-          parts.push({ inlineData: { data: userPhoto.data, mimeType: userPhoto.mimeType } });
-        }
-        parts.push(
-          { inlineData: { data: heroImg.inlineData.data, mimeType: heroImg.inlineData.mimeType } },
-          { inlineData: { data: referenceImages[i].data, mimeType: referenceImages[i].mimeType } },
-          { inlineData: { data: bgImage.data, mimeType: bgImage.mimeType } },
-        );
-
-        parts.push({
-          text: `IMPORTANT: A previous generation had this issue: ${f.reason}. Fix it this time.
-${userPhoto ? "The first image is the customer's actual car. The second is the correct car in a showroom." : "The first image is the correct car."}
-Match this car's body shape, headlights, grille, and every design detail exactly. Show it from this angle: ${ANGLE_PROMPTS[i]}.
-${fullPrompt}`,
-        });
-
-        return generateImageWithRetry(ai, parts);
-      })
-    );
-
-    regenResults.forEach((result, idx) => {
-      const i = failures[idx].index;
-      const parts = result.candidates?.[0]?.content?.parts || [];
-      const imgPart = parts.find((p) => p.inlineData);
-      if (imgPart) {
-        allImages[i] = { data: imgPart.inlineData.data, mimeType: imgPart.inlineData.mimeType };
-        console.log(`Angle ${i} regenerated.`);
-      }
-    });
-  }
 
   return allImages;
 }
