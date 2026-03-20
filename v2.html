@@ -101,23 +101,18 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   h1, .sub { display: none; }
   .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
 
-  /* Carousel: hidden initially, shown after generation */
-  .carousel { border-radius: 0; flex-shrink: 0; height: 0; overflow: hidden; transition: height 0.4s ease; aspect-ratio: auto; }
-  .carousel.mobile-visible { height: 35vh; }
-  .carousel.mobile-visible.mobile-expanded { height: 60vh; }
+  /* Carousel: hidden initially via display:none, shown by JS */
+  .carousel { border-radius: 0; flex-shrink: 0; display: none; overflow: hidden; }
 
   /* Chat panel */
   .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; overflow: hidden; background: #141414; }
   .chat-messages { padding: 0.75rem; }
 
-  /* Sheet handle — always inside chat panel top */
+  /* Sheet handle */
   .sheet-handle { display: block; width: 36px; height: 4px; background: #555; border-radius: 2px; margin: 10px auto 6px; flex-shrink: 0; cursor: pointer; }
 
-  /* Minimized chat toggle bar */
-  .chat-toggle-bar { display: none; padding: 6px 1rem; cursor: pointer; }
-  .chat-panel.minimized .chat-toggle-bar { display: flex; align-items: center; gap: 8px; }
-  .chat-panel.minimized .chat-messages { display: none; }
-  .chat-panel.minimized .file-preview { display: none !important; }
+  /* Toggle bar for minimized chat */
+  .chat-toggle-bar { padding: 6px 1rem; cursor: pointer; }
   .chat-toggle-preview { font-size: 13px; color: #888; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-toggle-badge { background: #333; color: #aaa; font-size: 10px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
 
@@ -147,7 +142,7 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   </div>
   <div class="chat-panel" id="chat-panel">
     <div class="sheet-handle" id="sheet-handle" style="display:none" onclick="toggleMobileChat()"></div>
-    <div class="chat-toggle-bar" onclick="toggleMobileChat()">
+    <div class="chat-toggle-bar" id="chat-toggle-bar" style="display:none" onclick="toggleMobileChat()">
       <span class="chat-toggle-preview" id="chat-toggle-preview">Tap to expand chat</span>
       <span class="chat-toggle-badge">Chat</span>
     </div>
@@ -412,22 +407,32 @@ function displayGeneratedImages(images) {
 }
 
 const isMobile = () => window.innerWidth <= 800;
+let mobileMinimized = false;
 
 function showMobileCarousel() {
   if (!isMobile()) return;
   const carousel = document.getElementById('carousel');
-  carousel.classList.add('mobile-visible');
+  // Force carousel visible with inline styles (overrides any CSS)
+  carousel.style.display = 'block';
+  carousel.style.height = '40vh';
+  carousel.style.width = '100%';
+  carousel.style.position = 'relative';
   document.getElementById('sheet-handle').style.display = 'block';
 }
 
 function minimizeMobileChat() {
   if (!isMobile()) return;
-  const panel = document.getElementById('chat-panel');
+  mobileMinimized = true;
+  // Hide chat messages, show toggle bar
+  chatMessages.style.display = 'none';
+  document.getElementById('chat-toggle-bar').style.display = 'flex';
+  const fp = document.getElementById('file-preview');
+  if (fp) fp.style.display = 'none';
+  // Give carousel more room
   const carousel = document.getElementById('carousel');
-  panel.classList.add('minimized');
-  carousel.classList.add('mobile-expanded');
+  carousel.style.height = '60vh';
   // Update preview text
-  const msgs = chatMessages.querySelectorAll('.msg.bot');
+  const msgs = document.querySelectorAll('#chat-messages .msg.bot');
   if (msgs.length > 0) {
     const lastMsg = msgs[msgs.length - 1].textContent.substring(0, 50);
     document.getElementById('chat-toggle-preview').textContent = lastMsg || 'Tap to expand chat';
@@ -436,16 +441,18 @@ function minimizeMobileChat() {
 
 function expandMobileChat() {
   if (!isMobile()) return;
-  const panel = document.getElementById('chat-panel');
+  mobileMinimized = false;
+  // Show chat messages, hide toggle bar
+  chatMessages.style.display = 'flex';
+  document.getElementById('chat-toggle-bar').style.display = 'none';
+  // Shrink carousel
   const carousel = document.getElementById('carousel');
-  panel.classList.remove('minimized');
-  carousel.classList.remove('mobile-expanded');
+  carousel.style.height = '40vh';
   setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
 }
 
 function toggleMobileChat() {
-  const panel = document.getElementById('chat-panel');
-  if (panel.classList.contains('minimized')) expandMobileChat();
+  if (mobileMinimized) expandMobileChat();
   else minimizeMobileChat();
 }
 
@@ -1183,10 +1190,7 @@ preloadImages(matteBlackImages).then(imgs => {
   });
   usingRealPhotos = true;
   commitSlides(slides, preserved, imgs.length);
-  // On mobile, carousel starts hidden — only shows after generation
-  if (window.innerWidth <= 800) {
-    document.getElementById('carousel').classList.remove('mobile-visible');
-  }
+  // On mobile, carousel stays hidden (display:none via CSS) until generation
 });
 
 // Focus chat input
