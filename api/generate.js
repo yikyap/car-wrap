@@ -71,9 +71,12 @@ Respond with ONLY a single paragraph description, no bullet points or labels. Be
     console.log("Car identified as:", carDescription);
 
     // Step 2: Generate 6 showroom views using hero image approach
+    // Pass user photo for better consistency
+    const userPhoto = { data: photo, mimeType };
     const images = await generateAllImages(
       ai, REFERENCE_IMAGES, BG_IMAGE,
-      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, color, wheels, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, color, wheels, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
+      userPhoto
     );
 
     res.status(200).json({ images, carDescription });

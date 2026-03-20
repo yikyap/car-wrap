@@ -417,7 +417,9 @@ async function recolorCustomCar(color) {
   if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
   showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
   try {
-    const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name }) });
+    const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
+    if (uploadedPhoto) body.userPhoto = { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType };
+    const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const text = await resp.text();
     if (!resp.ok) throw new Error(JSON.parse(text).error || 'Recolor failed');
     const { images } = JSON.parse(text);
@@ -994,7 +996,7 @@ async function recolorWithDescription(desc, colorName, finishName) {
     const resp = await fetch('/api/recolor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carDescription: desc, colorName, finishName }),
+      body: JSON.stringify({ carDescription: desc, colorName, finishName, userPhoto: uploadedPhoto ? { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType } : undefined }),
     });
     const text = await resp.text();
     if (!resp.ok) throw new Error(JSON.parse(text).error || 'Failed');

@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Failed to load reference images: " + err.message });
   }
 
-  const { carDescription, colorName, finishName } = req.body;
+  const { carDescription, colorName, finishName, userPhoto } = req.body;
   if (!carDescription || !colorName) {
     return res.status(400).json({ error: "Missing carDescription or colorName" });
   }
@@ -42,9 +42,11 @@ module.exports = async function handler(req, res) {
   const finish = finishName || "Gloss";
 
   try {
+    const photoRef = userPhoto ? { data: userPhoto.data, mimeType: userPhoto.mimeType } : null;
     const images = await generateAllImages(
       ai, REFERENCE_IMAGES, BG_IMAGE,
-      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
+      photoRef
     );
 
     res.status(200).json({ images });
