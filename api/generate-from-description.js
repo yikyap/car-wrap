@@ -4,19 +4,14 @@ const fs = require("fs");
 const path = require("path");
 
 let BG_IMAGE = null;
-let REFERENCE_IMAGES = null;
 
-function loadImages() {
-  if (REFERENCE_IMAGES) return;
+function loadBgImage() {
+  if (BG_IMAGE) return;
   const imgDir = path.join(process.cwd(), "images");
   BG_IMAGE = {
     data: fs.readFileSync(path.join(imgDir, "showroom-bg.webp")).toString("base64"),
     mimeType: "image/webp",
   };
-  REFERENCE_IMAGES = [1, 2, 3, 4, 5, 6].map((i) => ({
-    data: fs.readFileSync(path.join(imgDir, `matte-black-${i}.webp`)).toString("base64"),
-    mimeType: "image/webp",
-  }));
 }
 
 module.exports = async function handler(req, res) {
@@ -24,8 +19,8 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try { loadImages(); } catch (err) {
-    return res.status(500).json({ error: "Failed to load reference images: " + err.message });
+  try { loadBgImage(); } catch (err) {
+    return res.status(500).json({ error: "Failed to load background image: " + err.message });
   }
 
   const { carDescription } = req.body;
@@ -42,7 +37,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const images = await generateAllImages(
-      ai, REFERENCE_IMAGES, BG_IMAGE,
+      ai, BG_IMAGE,
       `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, year, color, wheels, trim, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
     );
 

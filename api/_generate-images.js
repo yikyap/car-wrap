@@ -18,29 +18,32 @@ STRICT RULES — FOLLOW EXACTLY:
 - Do NOT add badges, decals, or stickers that weren't in the description
 - The car body must be CLEAN — only paint, no graphics
 - Only show the car's actual factory badges in their correct positions (grille emblem, rear badge)
-- Do NOT mix brands — a Toyota must have Toyota badges, a BMW must have BMW badges, etc.`;
+- Do NOT mix brands — a Toyota must have Toyota badges, a BMW must have BMW badges, etc.
+- Do NOT reference or copy any other car in the provided images — only use them for background/lighting reference`;
 
-async function generateAllImages(ai, referenceImages, bgImage, promptText, userPhoto) {
+async function generateAllImages(ai, bgImage, promptText, userPhoto) {
   const HERO_INDEX = 4;
   const fullPrompt = promptText + GUARDRAILS;
 
-  // Step 1: Generate hero image
+  // Step 1: Generate hero image — NO Tesla reference, just text + showroom bg
   console.log("Generating hero image (angle " + HERO_INDEX + ")...");
-  const heroParts = [
-    { inlineData: { data: referenceImages[HERO_INDEX].data, mimeType: referenceImages[HERO_INDEX].mimeType } },
-    { inlineData: { data: bgImage.data, mimeType: bgImage.mimeType } },
-  ];
+  const heroParts = [];
+
   if (userPhoto) {
-    heroParts.unshift({ inlineData: { data: userPhoto.data, mimeType: userPhoto.mimeType } });
+    heroParts.push({ inlineData: { data: userPhoto.data, mimeType: userPhoto.mimeType } });
+    heroParts.push({ inlineData: { data: bgImage.data, mimeType: bgImage.mimeType } });
     heroParts.push({
-      text: `The first image is the customer's actual car — match this car EXACTLY (same make, model, body shape, design details).
+      text: `The first image is the customer's actual car — generate this EXACT car (same make, model, body shape, every design detail).
+Use the second image ONLY as a reference for the showroom background and lighting — do NOT copy any car from it.
 ${fullPrompt}
-Camera angle: ${ANGLE_PROMPTS[HERO_INDEX]}.
-Use the angle reference and showroom background provided.`,
+Camera angle: ${ANGLE_PROMPTS[HERO_INDEX]}.`,
     });
   } else {
+    heroParts.push({ inlineData: { data: bgImage.data, mimeType: bgImage.mimeType } });
     heroParts.push({
-      text: fullPrompt + "\n\nCamera angle: " + ANGLE_PROMPTS[HERO_INDEX] + ".",
+      text: `Use this image ONLY as a reference for the showroom background and lighting — do NOT copy any car from it.
+${fullPrompt}
+Camera angle: ${ANGLE_PROMPTS[HERO_INDEX]}.`,
     });
   }
 
@@ -49,9 +52,25 @@ Use the angle reference and showroom background provided.`,
   const heroImg = heroPartsResp.find((p) => p.inlineData);
   if (!heroImg) throw new Error("No hero image in response");
 
-  console.log("Hero image generated. Generating remaining 5 angles...");
+  // Step 2: Verify hero image matches the description
+  console.log("Verifying hero image...");
+  const heroCheck = await verifyHero(ai, heroImg.inlineData, promptText);
+  if (!heroCheck.pass) {
+    console.log("Hero FAILED verification: " + heroCheck.reason + ". Regenerating...");
+    const retryResult = await generateImageWithRetry(ai, heroParts);
+    const retryParts = retryResult.candidates?.[0]?.content?.parts || [];
+    const retryImg = retryParts.find((p) => p.inlineData);
+    if (retryImg) {
+      heroImg.inlineData = retryImg.inlineData;
+      console.log("Hero regenerated.");
+    }
+  } else {
+    console.log("Hero passed verification.");
+  }
 
-  // Step 2: Generate remaining 5 angles
+  console.log("Generating remaining 5 angles...");
+
+  // Step 3: Generate remaining 5 angles — ONLY hero + showroom bg, NO Tesla reference
   const remainingIndices = [0, 1, 2, 3, 5];
   const remainingResults = await Promise.all(
     remainingIndices.map((i) => {
@@ -61,24 +80,24 @@ Use the angle reference and showroom background provided.`,
       }
       parts.push(
         { inlineData: { data: heroImg.inlineData.data, mimeType: heroImg.inlineData.mimeType } },
-        { inlineData: { data: referenceImages[i].data, mimeType: referenceImages[i].mimeType } },
         { inlineData: { data: bgImage.data, mimeType: bgImage.mimeType } },
       );
 
-      const photoRef = userPhoto
-        ? "The first image is the customer's actual car. The second image is a generated showroom view of that SAME car — match it exactly."
-        : "The first image is the EXACT car you must match — same make, model, color, wheels, every detail must be identical.";
+      const imgCount = userPhoto ? 3 : 2;
+      const heroRef = userPhoto
+        ? "The first image is the customer's actual car. The second image is a showroom render of that SAME car — match it EXACTLY (same make, model, body shape, color, wheels)."
+        : "The first image is the EXACT car you must reproduce — same make, model, color, wheels, body shape, every detail must be identical.";
 
-      const angleRef = userPhoto
-        ? "The third image shows the camera angle to match: " + ANGLE_PROMPTS[i] + ". The fourth image is the showroom background."
-        : "The second image shows the camera angle to match: " + ANGLE_PROMPTS[i] + ". The third image is the showroom background.";
+      const bgRef = `Image ${imgCount} is the showroom background — use the same dark studio lighting and floor.`;
 
       parts.push({
-        text: `${photoRef}
-${angleRef}
+        text: `${heroRef}
+${bgRef}
 ${fullPrompt}
 
-CRITICAL: The car must be the EXACT same make, model, and body shape as the reference. Not a similar car — the SAME car from a different angle.`,
+Camera angle for this image: ${ANGLE_PROMPTS[i]}.
+
+CRITICAL: Generate the EXACT same car from the reference, just viewed from a different angle. Same body shape, same color, same wheels, same everything. Do NOT generate a different car.`,
       });
 
       return generateImageWithRetry(ai, parts);
@@ -105,38 +124,27 @@ CRITICAL: The car must be the EXACT same make, model, and body shape as the refe
   return allImages;
 }
 
-// Verify a single image for quality issues
-async function verifyImage(ai, imgData, heroData) {
+// Lightweight hero verification — checks if the generated car matches the description
+async function verifyHero(ai, imgData, promptText) {
   try {
-    const parts = [];
-    if (heroData) {
-      parts.push({ inlineData: { data: heroData.data, mimeType: heroData.mimeType } });
-    }
-    parts.push({ inlineData: { data: imgData.data, mimeType: imgData.mimeType } });
+    // Extract car description from the prompt
+    const descMatch = promptText.match(/following car:\s*\n\n(.+?)(?:\n\n|$)/s);
+    const carDesc = descMatch ? descMatch[1].trim() : "";
 
-    const prompt = heroData
-      ? `Check these two car images for issues. Answer each question with YES or NO:
-1. Are both images the same make and model of car (same body shape, design)?
-2. Does the second image have any wrong brand logos (e.g. a Tesla logo on a Toyota)?
-3. Does the second image have any large text, watermarks, or graphics overlaid on the car body?
-4. Does the second image have any major distortions or artifacts?
+    const parts = [
+      { inlineData: { data: imgData.data, mimeType: imgData.mimeType } },
+      { text: `Look at this car image. I asked for: "${carDesc}"
 
-Reply in this exact format:
-SAME_CAR: YES/NO
-WRONG_LOGO: YES/NO
-TEXT_OVERLAY: YES/NO
-DISTORTION: YES/NO`
-      : `Check this car image for issues. Answer each question with YES or NO:
-1. Does the image have any wrong brand logos (e.g. a Tesla logo on a non-Tesla car)?
-2. Does the image have any large text, watermarks, or graphics overlaid on the car body?
-3. Does the image have any major distortions or artifacts?
+Answer YES or NO to each:
+1. Is this the correct MAKE? (e.g., if I asked for BMW, is it a BMW and not a Tesla/Toyota/etc?)
+2. Is this the correct general MODEL TYPE? (sedan vs coupe vs SUV etc)
+3. Are there any wrong brand logos visible? (e.g. Tesla badge on a BMW)
 
 Reply in this exact format:
-WRONG_LOGO: YES/NO
-TEXT_OVERLAY: YES/NO
-DISTORTION: YES/NO`;
-
-    parts.push({ text: prompt });
+CORRECT_MAKE: YES/NO
+CORRECT_TYPE: YES/NO
+WRONG_LOGO: YES/NO` },
+    ];
 
     const result = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -144,22 +152,19 @@ DISTORTION: YES/NO`;
     });
 
     const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log(`Verification result: ${text.replace(/\n/g, ' | ')}`);
+    console.log("Hero verify: " + text.replace(/\n/g, " | "));
 
-    // Parse results
-    const sameCar = heroData ? /SAME_CAR:\s*YES/i.test(text) : true;
+    const correctMake = /CORRECT_MAKE:\s*YES/i.test(text);
+    const correctType = /CORRECT_TYPE:\s*YES/i.test(text);
     const wrongLogo = /WRONG_LOGO:\s*YES/i.test(text);
-    const textOverlay = /TEXT_OVERLAY:\s*YES/i.test(text);
-    const distortion = /DISTORTION:\s*YES/i.test(text);
 
-    if (!sameCar) return { pass: false, reason: "wrong car model" };
-    if (wrongLogo) return { pass: false, reason: "wrong brand logo on car" };
-    if (textOverlay) return { pass: false, reason: "text or graphics overlaid on car body" };
-    if (distortion) return { pass: false, reason: "major distortions or artifacts" };
+    if (!correctMake) return { pass: false, reason: "wrong car make" };
+    if (!correctType) return { pass: false, reason: "wrong body type" };
+    if (wrongLogo) return { pass: false, reason: "wrong brand logo" };
 
     return { pass: true, reason: "ok" };
   } catch (err) {
-    console.log("Verification error, assuming pass:", err.message);
+    console.log("Hero verification error, assuming pass:", err.message);
     return { pass: true, reason: "verification error" };
   }
 }
