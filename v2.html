@@ -525,7 +525,25 @@ function addMessageWithConfirm(text, carDescription) {
       addPostGenerateConfirm(carDescription);
       chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
     } catch (err) {
-      addMessage('Generation failed: ' + err.message, 'bot');
+      console.error('Generation error:', err);
+      btns.remove();
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong generating your car.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = async () => {
+        errMsg.remove();
+        addMessageWithConfirm('Ready to generate?', carDescription);
+      };
+      errBtns.appendChild(retryBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return;
     }
     btns.remove();
   };
@@ -714,7 +732,27 @@ function addRecolorConfirm(text, colorName, finishName) {
       }
       chatHistory.push({ role: 'model', parts: [{ text: 'Here it is!' }] });
     } catch (err) {
-      addMessage('Recolor failed: ' + err.message, 'bot');
+      console.error('Recolor error:', err);
+      btns.remove();
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong generating that color.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = () => { errMsg.remove(); addRecolorConfirm(colorName + ' — want me to generate it?', colorName, finishName); };
+      const diffBtn = document.createElement('button');
+      diffBtn.className = 'confirm-btn no';
+      diffBtn.textContent = 'Pick another color';
+      diffBtn.onclick = () => { errMsg.remove(); addMessageWithPalette('Pick a different color:'); };
+      errBtns.appendChild(retryBtn);
+      errBtns.appendChild(diffBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return;
     }
     btns.remove();
   };
@@ -796,7 +834,20 @@ async function sendMessage() {
       addPostGenerateConfirm(customCarDescription);
       chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
     } catch (err) {
-      addMessage('Generation failed: ' + err.message, 'bot');
+      console.error('Photo generation error:', err);
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong analyzing your photo.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = async () => { errMsg.remove(); await generateViews().then(() => { addPostGenerateConfirm(customCarDescription); }).catch(() => { addMessage('Still having trouble — please try again later.', 'bot'); }); };
+      errBtns.appendChild(retryBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     return;
   }
@@ -979,7 +1030,21 @@ async function applyTint(pct) {
     btns.appendChild(noBtn);
     msg.appendChild(btns);
   } catch (err) {
-    msg.textContent = 'Failed to apply tint: ' + err.message;
+    console.error('Tint error:', err);
+    msg.textContent = 'Hmm, something went wrong applying the tint.';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'confirm-btn yes';
+    retryBtn.textContent = 'Try again';
+    retryBtn.onclick = () => { msg.remove(); applyTint(pct); };
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'confirm-btn no';
+    skipBtn.textContent = 'Skip tint';
+    skipBtn.onclick = () => { msg.remove(); proceedToNextService('tint'); };
+    btns.appendChild(retryBtn);
+    btns.appendChild(skipBtn);
+    msg.appendChild(btns);
   }
 }
 
@@ -1067,7 +1132,21 @@ async function applyPowderCoat(colorName) {
     btns.appendChild(noBtn);
     msg.appendChild(btns);
   } catch (err) {
-    msg.textContent = 'Failed to update wheels: ' + err.message;
+    console.error('Powder coat error:', err);
+    msg.textContent = 'Hmm, something went wrong with the wheels.';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'confirm-btn yes';
+    retryBtn.textContent = 'Try again';
+    retryBtn.onclick = () => { msg.remove(); applyPowderCoat(colorName); };
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'confirm-btn no';
+    skipBtn.textContent = 'Skip wheels';
+    skipBtn.onclick = () => { msg.remove(); proceedToNextService('powder'); };
+    btns.appendChild(retryBtn);
+    btns.appendChild(skipBtn);
+    msg.appendChild(btns);
   }
 }
 
