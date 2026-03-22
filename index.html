@@ -1,628 +1,317 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tesla Model 3 — Wrap Visualizer</title>
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding: 1.5rem; }
-h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
-.sub { font-size: 13px; color: #888; margin-bottom: 1.25rem; }
-.layout { display: grid; grid-template-columns: 1fr 265px; gap: 1.25rem; align-items: start; }
-.carousel { background: #111; border-radius: 14px; overflow: hidden; position: relative; aspect-ratio: 16/10; }
-.slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s; }
-.slide.active { opacity: 1; }
-.slide canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
-.arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 10; transition: background 0.15s; backdrop-filter: blur(4px); }
-.arrow:hover { background: rgba(0,0,0,0.8); }
-.arrow-l { left: 12px; }
-.arrow-r { right: 12px; }
-.dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.2s; padding: 0; }
-.dot.active { background: #fff; transform: scale(1.2); }
-.badge { position: absolute; bottom: 12px; left: 14px; background: rgba(0,0,0,0.7); border-radius: 6px; padding: 5px 11px; font-size: 11px; color: #ccc; z-index: 10; backdrop-filter: blur(4px); }
-.controls { display: flex; flex-direction: column; gap: 0.85rem; }
-.card { background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 0.9rem 1.1rem; }
-.lbl { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
-.color-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; margin-bottom: 7px; }
-.sw { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s; }
-.sw:hover { transform: scale(1.12); }
-.sw.on { border-color: #fff; transform: scale(1.12); }
-.color-name { font-size: 11px; color: #666; }
-.row { display: flex; gap: 5px; }
-.pill { flex: 1; font-size: 11px; padding: 5px 4px; border-radius: 6px; border: 0.5px solid #333; background: transparent; cursor: pointer; color: #888; text-align: center; transition: all 0.12s; font-family: inherit; }
-.pill:hover { background: #222; }
-.pill.on { background: #fff; color: #000; border-color: #fff; }
-.price-card { background: #1a1a1a; border-radius: 12px; padding: 0.9rem 1.1rem; text-align: center; border: 0.5px solid #2a2a2a; }
-.price-label { font-size: 11px; color: #666; margin-bottom: 4px; }
-.price-val { font-size: 26px; font-weight: 500; }
-.cta { width: 100%; padding: 11px; font-size: 13px; font-weight: 500; border-radius: 8px; background: #fff; color: #000; border: none; cursor: pointer; transition: opacity 0.12s; font-family: inherit; }
-.cta:hover { opacity: 0.85; }
-.custom-color-row { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
-.hex-input { flex: 1; background: #111; border: 0.5px solid #333; border-radius: 6px; padding: 6px 8px; color: #fff; font-size: 11px; font-family: inherit; outline: none; }
-.hex-input:focus { border-color: #555; }
-.hex-input::placeholder { color: #555; }
-.color-upload-label { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0.5px solid #333; border-radius: 6px; cursor: pointer; color: #666; transition: all 0.15s; flex-shrink: 0; }
-.color-upload-label:hover { border-color: #555; color: #aaa; }
-.apply-color-btn { background: #333; border: none; color: #fff; font-size: 11px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; flex-shrink: 0; transition: background 0.15s; }
-.apply-color-btn:hover { background: #444; }
-.upload-card { background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 0.9rem 1.1rem; }
-.upload-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1.5px dashed #333; border-radius: 8px; cursor: pointer; color: #888; font-size: 12px; transition: all 0.15s; }
-.upload-label:hover { border-color: #555; color: #aaa; background: rgba(255,255,255,0.03); }
-.upload-label.has-file { border-color: #4a4; color: #8c8; border-style: solid; }
-.gen-btn { width: 100%; padding: 9px; font-size: 12px; font-weight: 500; border-radius: 8px; background: #333; color: #fff; border: none; cursor: pointer; transition: all 0.15s; font-family: inherit; margin-top: 8px; display: none; }
-.gen-btn:hover { background: #444; }
-.gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 12px; backdrop-filter: blur(4px); }
-.spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: #999; }
-@media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
-</style>
+<title>Haus of Wraps | Car Wraps, PPF & Window Tint in San Diego</title>
+<meta name="description" content="San Diego's premier vehicle wrap studio. Color change wraps, paint protection film, ceramic window tint, powder coating & body kits. Free quotes: 619-512-9727">
+<meta property="og:title" content="Haus of Wraps — San Diego's Premier Wrap Studio">
+<meta property="og:description" content="Color change wraps, PPF, window tint, powder coating & body kits. See your car in any color with our AI visualizer.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://car-wrap.vercel.app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AutoRepair",
+  "name": "Haus of Wraps",
+  "description": "San Diego's premier vehicle wrap studio specializing in color change wraps, paint protection film, window tinting, powder coating and body kits.",
+  "url": "https://www.hausofwraps.com",
+  "telephone": "+1-619-512-9727",
+  "email": "Contact@hausofwraps.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "7626 Miramar Rd # 3100",
+    "addressLocality": "San Diego",
+    "addressRegion": "CA",
+    "postalCode": "92126",
+    "addressCountry": "US"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 32.8932,
+    "longitude": -117.1467
+  },
+  "priceRange": "$$",
+  "openingHours": "Mo-Su 09:00-21:00",
+  "areaServed": "San Diego County",
+  "hasOfferCatalog": {
+    "@type": "OfferCatalog",
+    "name": "Services",
+    "itemListElement": [
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Vehicle Wraps"}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Paint Protection Film"}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Window Tinting"}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Powder Coating"}},
+      {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Body Kit Installation"}}
+    ]
+  }
+}
+</script>
 </head>
 <body>
-<h1>Tesla Model 3 — wrap visualizer</h1>
-<p class="sub">Choose a color to preview your wrap in real time</p>
-<div class="layout">
-  <div class="carousel" id="carousel">
-    <button class="arrow arrow-l" onclick="nav(-1)">&#8249;</button>
-    <button class="arrow arrow-r" onclick="nav(1)">&#8250;</button>
-    <div class="dots" id="dots"></div>
-    <div class="badge" id="badge">Pearl white · Gloss</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="container">
+    <a href="/" class="header-logo"><img src="/images/logo.png" alt="Haus of Wraps"></a>
+    <nav class="nav-links">
+      <a href="#services">Services</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#visualizer">Visualizer</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+      <a href="/visualizer" class="btn btn-gold nav-cta">Try Visualizer</a>
+    </nav>
+    <button class="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
-  <div class="controls">
-    <div class="card">
-      <div class="lbl">Wrap color</div>
-      <div class="color-grid" id="cg"></div>
-      <div class="color-name" id="cn">Pearl white</div>
-      <div class="custom-color-row">
-        <input type="text" id="hex-input" class="hex-input" placeholder="#hex or color name" spellcheck="false">
-        <label class="color-upload-label" for="color-upload">
-          <input type="file" id="color-upload" accept="image/*" hidden>
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        </label>
-        <button class="apply-color-btn" id="apply-color-btn" onclick="applyCustomColor()">Apply</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="lbl">Finish</div>
-      <div class="row" id="fr"></div>
-    </div>
-    <div class="upload-card">
-      <div class="lbl">Your car</div>
-      <label class="upload-label" id="upload-label" for="car-upload">
-        <input type="file" id="car-upload" accept="image/*" hidden>
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        Upload a photo of your car
-      </label>
-      <button class="gen-btn" id="gen-btn" onclick="generateViews()">Generate showroom views</button>
-    </div>
-    <div class="price-card">
-      <div class="price-label">Estimated starting price</div>
-      <div class="price-val" id="pv">$2,200</div>
-    </div>
-    <button class="cta" onclick="alert('Quote request sent! We will contact you shortly.')">Get a free quote</button>
-  </div>
+</header>
+
+<!-- Mobile Nav -->
+<div class="mobile-nav">
+  <a href="#services">Services</a>
+  <a href="#gallery">Gallery</a>
+  <a href="/visualizer">Visualizer</a>
+  <a href="#about">About</a>
+  <a href="#contact">Contact</a>
 </div>
 
-<script>
-const COLORS = [
-  {name:'Pearl white', hex:'#ffffff'},
-  {name:'Matte black', hex:'#0a0a0a', finish:'Matte', images:['./images/matte-black-1.webp','./images/matte-black-2.webp','./images/matte-black-3.webp','./images/matte-black-4.webp','./images/matte-black-5.webp','./images/matte-black-6.webp']},
-  {name:'Matte red', hex:'#c0201e', finish:'Matte', images:['./images/matte-red-2.webp','./images/matte-red-3.webp','./images/matte-red-4.webp','./images/matte-red-7.webp','./images/matte-red-1.webp','./images/matte-red-5.webp']},
-  {name:'Sunflower', hex:'#d4a017'},
-  {name:'Ocean blue', hex:'#1a3a8a'},
-  {name:'British green', hex:'#2a5a3a'},
-  {name:'Burnt orange', hex:'#c4651a', images:['./images/burnt-orange-1.webp','./images/burnt-orange-2.webp','./images/burnt-orange-3.webp','./images/burnt-orange-4.webp','./images/burnt-orange-5.webp']},
-  {name:'Royal purple', hex:'#5a1a8a'},
-  {name:'Gunmetal', hex:'#4a4e5a'},
-  {name:'Rose gold', hex:'#b87868'},
-];
-const FINISHES = [
-  {name:'Gloss', add:0},
-  {name:'Matte', add:100},
-  {name:'Satin', add:150},
-  {name:'Chrome', add:600},
-];
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">San Diego's Premier Wrap Studio</div>
+      <h1>Transform Your Ride with <span class="gold">Precision Wraps</span></h1>
+      <p>Expert vinyl wraps, paint protection film, ceramic tint, powder coating, and body kits — all under one roof in San Diego.</p>
+      <div class="hero-btns">
+        <a href="/visualizer" class="btn btn-gold">Try Our AI Visualizer</a>
+        <a href="#contact" class="btn btn-outline">Get a Free Quote</a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num">2,500+</div>
+          <div class="hero-stat-label">Vehicles Wrapped</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">10+</div>
+          <div class="hero-stat-label">Years Experience</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">5&#9733;</div>
+          <div class="hero-stat-label">Google Rating</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-const BASE_IMAGES = ['./images/1.webp','./images/2.webp','./images/3.webp','./images/4.webp','./images/5.webp'];
-let currentSlide = 0;
-let st = { color: COLORS[0], finish: FINISHES[0] };
-const baseSlideData = []; // for recoloring: {origData, mask, canvas, width, height}
-let activeSlideCount = BASE_IMAGES.length;
-let usingRealPhotos = false;
-let customCarDescription = null; // set after upload+analysis
-const recolorCache = {}; // cache: "colorName|finishName" -> images array
+<!-- Services -->
+<section class="services" id="services">
+  <div class="container">
+    <div class="section-label reveal">What We Do</div>
+    <h2 class="section-title reveal">Our Services</h2>
+    <p class="section-sub reveal">From full color changes to protective films, we handle every detail with precision.</p>
+    <div class="services-grid">
+      <div class="service-card reveal">
+        <div class="service-icon">&#127912;</div>
+        <h3>Color Change Wraps</h3>
+        <p>Full-body vinyl wraps in matte, satin, gloss, chrome, and custom finishes. Premium materials from 3M, Avery Dennison, and Hexis.</p>
+      </div>
+      <div class="service-card reveal">
+        <div class="service-icon">&#128737;</div>
+        <h3>Paint Protection Film</h3>
+        <p>Self-healing clear bra using XPEL Ultimate Plus and Stealth. Protect your paint from rock chips, scratches, and road debris.</p>
+      </div>
+      <div class="service-card reveal">
+        <div class="service-icon">&#9728;</div>
+        <h3>Window Tint</h3>
+        <p>Ceramic window tint that blocks 99% of UV rays. Reduce heat, glare, and protect your interior while keeping your view crystal clear.</p>
+      </div>
+      <div class="service-card reveal">
+        <div class="service-icon">&#9881;</div>
+        <h3>Powder Coating</h3>
+        <p>Custom wheel and caliper finishes in any color. Durable powder coat that outlasts paint and resists chips, scratches, and brake dust.</p>
+      </div>
+      <div class="service-card reveal">
+        <div class="service-icon">&#128663;</div>
+        <h3>Body Kits</h3>
+        <p>Front lips, side skirts, rear diffusers, and spoilers. Professional fitment and installation for a factory-finished look.</p>
+      </div>
+      <div class="service-card reveal">
+        <div class="service-icon">&#10024;</div>
+        <h3>Custom Graphics</h3>
+        <p>Partial wraps, racing stripes, commercial fleet graphics, and custom designs. Bring your vision to life with precision cut vinyl.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-const carouselEl = document.getElementById('carousel');
+<!-- Visualizer CTA -->
+<section class="viz-cta" id="visualizer">
+  <div class="container">
+    <div class="viz-cta-content reveal">
+      <div class="section-label">AI-Powered</div>
+      <h2>See Your Car in Any Color <span class="gold">Before You Commit</span></h2>
+      <p>Our AI wrap visualizer generates photorealistic showroom images of your exact car in any wrap color, tint level, and wheel finish.</p>
+      <ul class="viz-cta-features">
+        <li>Describe your car or upload a photo</li>
+        <li>Choose from 12+ wrap colors and custom options</li>
+        <li>Preview window tint and powder-coated wheels</li>
+        <li>6 professional showroom angles generated</li>
+        <li>Submit your build directly for a quote</li>
+      </ul>
+      <a href="/visualizer" class="btn btn-gold">Launch Visualizer</a>
+    </div>
+    <div class="viz-cta-preview reveal">
+      <img src="/images/showroom-bg.webp" alt="AI Wrap Visualizer Preview" loading="lazy">
+    </div>
+  </div>
+</section>
 
-// Build UI
-const cg = document.getElementById('cg');
-function buildColorGrid() {
-  cg.innerHTML = '';
-  const filtered = COLORS.filter(c => !c.finish || c.finish === st.finish.name);
-  filtered.forEach((c) => {
-    const s = document.createElement('div');
-    s.className = 'sw' + (c === st.color ? ' on' : '');
-    s.style.background = c.hex;
-    if (c.hex === '#ffffff') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
-    if (c.hex === '#0a0a0a') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
-    s.title = c.name;
-    s.onclick = () => {
-      document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
-      s.classList.add('on');
-      st.color = c;
-      document.getElementById('cn').textContent = c.name;
-      updateBadge();
-      switchColor(c);
-      updatePrice();
-    };
-    cg.appendChild(s);
-  });
-  // If current color is not in filtered list, select the first one
-  if (!filtered.includes(st.color)) {
-    st.color = filtered[0];
-    document.getElementById('cn').textContent = st.color.name;
-    updateBadge();
-    switchColor(st.color);
-    cg.querySelector('.sw').classList.add('on');
-  }
-}
-buildColorGrid();
+<!-- Gallery -->
+<section class="gallery" id="gallery">
+  <div class="container">
+    <div class="section-label reveal">Our Work</div>
+    <h2 class="section-title reveal">Recent Projects</h2>
+    <p class="section-sub reveal">Every vehicle tells a story. Here are some of our favorites.</p>
+    <div class="gallery-filters reveal">
+      <button class="gallery-filter active" data-filter="all">All</button>
+      <button class="gallery-filter" data-filter="wrap">Wraps</button>
+      <button class="gallery-filter" data-filter="ppf">PPF</button>
+      <button class="gallery-filter" data-filter="tint">Tint</button>
+      <button class="gallery-filter" data-filter="powder">Wheels</button>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item reveal" data-cat="wrap"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">Wrap Project</div></div>
+      <div class="gallery-item reveal" data-cat="wrap"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">Wrap Project</div></div>
+      <div class="gallery-item reveal" data-cat="ppf"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">PPF Project</div></div>
+      <div class="gallery-item reveal" data-cat="tint"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">Tint Project</div></div>
+      <div class="gallery-item reveal" data-cat="powder"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">Powder Coat</div></div>
+      <div class="gallery-item reveal" data-cat="wrap"><div style="width:100%;height:100%;background:var(--navy-light);display:flex;align-items:center;justify-content:center;color:var(--gray-600);font-size:13px;">Wrap Project</div></div>
+    </div>
+  </div>
+</section>
 
-const fr = document.getElementById('fr');
-FINISHES.forEach((f, i) => {
-  const b = document.createElement('button');
-  b.className = 'pill' + (i === 0 ? ' on' : '');
-  b.textContent = f.name;
-  b.onclick = () => {
-    document.querySelectorAll('#fr .pill').forEach(x => x.classList.remove('on'));
-    b.classList.add('on');
-    st.finish = f;
-    buildColorGrid();
-    updateBadge();
-    updatePrice();
-  };
-  fr.appendChild(b);
-});
+<!-- About -->
+<section class="about" id="about">
+  <div class="container">
+    <div class="about-content reveal">
+      <div class="section-label">About Us</div>
+      <h2>Built by <span class="gold">Car Enthusiasts</span>, for Car Enthusiasts</h2>
+      <p>Haus of Wraps is San Diego's trusted destination for premium vehicle customization. Founded by Jon, an ASE-certified technician and lifelong car enthusiast, we bring the same passion to every project — whether it's a weekend cruiser or a six-figure exotic.</p>
+      <p>Every install starts with proper prep: exterior detailing, careful bumper and trim removal, precision installation, and quality reassembly. No shortcuts, no rushing — just the kind of work we'd want done on our own cars.</p>
+      <div class="about-trust">
+        <div class="about-trust-item">
+          <div class="about-trust-num">ASE</div>
+          <div class="about-trust-label">Certified</div>
+        </div>
+        <div class="about-trust-item">
+          <div class="about-trust-num">3M</div>
+          <div class="about-trust-label">Preferred</div>
+        </div>
+        <div class="about-trust-item">
+          <div class="about-trust-num">XPEL</div>
+          <div class="about-trust-label">Authorized</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
-function updatePrice() { document.getElementById('pv').textContent = '$' + (2200 + st.finish.add).toLocaleString(); }
+<!-- Contact -->
+<section class="contact" id="contact">
+  <div class="container">
+    <div class="section-label reveal">Get in Touch</div>
+    <h2 class="section-title reveal">Request a Quote</h2>
+    <p class="section-sub reveal">Tell us about your project. We'll get back to you within 24 hours.</p>
+    <div class="contact-grid">
+      <form class="contact-form reveal" id="contact-form">
+        <div class="form-row">
+          <input type="text" name="name" class="form-field" placeholder="Your Name" required>
+          <input type="email" name="email" class="form-field" placeholder="Email Address" required>
+        </div>
+        <div class="form-row">
+          <input type="tel" name="phone" class="form-field" placeholder="Phone Number">
+          <input type="text" name="vehicle" class="form-field" placeholder="Vehicle (Year Make Model)">
+        </div>
+        <select name="service" class="form-field">
+          <option value="" disabled selected>Service Interested In</option>
+          <option>Color Change Wrap</option>
+          <option>Paint Protection Film (PPF)</option>
+          <option>Window Tint</option>
+          <option>Powder Coating</option>
+          <option>Body Kit</option>
+          <option>Multiple Services</option>
+        </select>
+        <textarea name="message" class="form-field" placeholder="Tell us about your project..."></textarea>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;">Send Quote Request</button>
+      </form>
+      <div class="contact-info reveal">
+        <div class="contact-info-item">
+          <div class="contact-info-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <div>
+            <div class="contact-info-label">Phone</div>
+            <div class="contact-info-value"><a href="tel:+16195129727">619-512-9727</a></div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="contact-info-label">Email</div>
+            <div class="contact-info-value"><a href="mailto:Contact@hausofwraps.com">Contact@hausofwraps.com</a></div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div>
+            <div class="contact-info-label">Location</div>
+            <div class="contact-info-value">7626 Miramar Rd # 3100<br>San Diego, CA 92126</div>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-info-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <div class="contact-info-label">Hours</div>
+            <div class="contact-info-value">Mon — Sun: 9AM – 9PM</div>
+          </div>
+        </div>
+        <div class="social-links">
+          <a href="https://www.instagram.com/hausofwraps" target="_blank" class="social-link" aria-label="Instagram">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+          </a>
+          <a href="https://www.facebook.com/hausofwraps" target="_blank" class="social-link" aria-label="Facebook">
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+        </div>
+        <div class="contact-map">
+          <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3349.5!2d-117.1467!3d32.8932!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzLCsDUzJzM1LjUiTiAxMTfCsDA4JzQ4LjEiVw!5e0!3m2!1sen!2sus!4v1" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-// --- Dynamic slide management ---
-// Create slides offscreen, return them for painting before DOM insertion
-function createSlides(count) {
-  const preserved = Math.min(currentSlide, count - 1);
-  const newSlides = [];
-  for (let i = 0; i < count; i++) {
-    const div = document.createElement('div');
-    div.className = 'slide' + (i === preserved ? ' active' : '');
-    div.dataset.idx = i;
-    div.innerHTML = '<canvas></canvas>';
-    newSlides.push(div);
-  }
-  return { slides: newSlides, preserved };
-}
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p>&copy; 2026 Haus of Wraps. All rights reserved. &nbsp;|&nbsp; <a href="/visualizer">AI Wrap Visualizer</a></p>
+  </div>
+</footer>
 
-// Swap painted slides into the DOM atomically
-function commitSlides(newSlides, preserved, count) {
-  carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
-  const anchor = carouselEl.querySelector('.arrow-l');
-  newSlides.forEach(s => carouselEl.insertBefore(s, anchor));
-  activeSlideCount = count;
-  currentSlide = preserved;
-  buildDots(count);
-}
-
-function buildDots(count) {
-  const dotsEl = document.getElementById('dots');
-  dotsEl.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const d = document.createElement('button');
-    d.className = 'dot' + (i === currentSlide ? ' active' : '');
-    d.onclick = () => goTo(i);
-    dotsEl.appendChild(d);
-  }
-}
-
-// Carousel navigation
-function nav(dir) { goTo((currentSlide + dir + activeSlideCount) % activeSlideCount); }
-function goTo(idx) {
-  const slides = carouselEl.querySelectorAll('.slide');
-  const dots = document.querySelectorAll('.dot');
-  slides[currentSlide].classList.remove('active');
-  dots[currentSlide].classList.remove('active');
-  currentSlide = idx;
-  slides[currentSlide].classList.add('active');
-  dots[currentSlide].classList.add('active');
-}
-
-// Touch/swipe support
-let touchStartX = 0;
-carouselEl.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
-carouselEl.addEventListener('touchend', e => {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 50) nav(dx > 0 ? -1 : 1);
-});
-
-// Keyboard
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') nav(-1);
-  if (e.key === 'ArrowRight') nav(1);
-});
-
-// --- Color switching ---
-// Preload cache so repeat selections are instant
-const imgCache = {};
-function preloadImages(srcs) {
-  return Promise.all(srcs.map(src => {
-    if (imgCache[src]) return Promise.resolve(imgCache[src]);
-    return new Promise(resolve => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = src;
-      img.onload = () => { imgCache[src] = img; resolve(img); };
-    });
-  }));
-}
-
-function switchColor(color) {
-  // If custom car is active, recolor via API
-  if (customCarDescription) {
-    recolorCustomCar(color);
-    return;
-  }
-
-  if (color.images) {
-    preloadImages(color.images).then(imgs => {
-      const { slides, preserved } = createSlides(color.images.length);
-      imgs.forEach((img, i) => {
-        const canvas = slides[i].querySelector('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-      });
-      usingRealPhotos = true;
-      commitSlides(slides, preserved, color.images.length);
-    });
-  } else {
-    if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
-      preloadImages(BASE_IMAGES).then(imgs => {
-        const { slides, preserved } = createSlides(BASE_IMAGES.length);
-        usingRealPhotos = false;
-        commitSlides(slides, preserved, BASE_IMAGES.length);
-        initBaseSlides();
-      });
-    } else {
-      applyAllColors();
-    }
-  }
-}
-
-// --- Color engine — direct pixel manipulation on canvas ---
-let baseLoaded = 0;
-
-function initBaseSlides() {
-  baseLoaded = 0;
-  baseSlideData.length = 0;
-  const slides = carouselEl.querySelectorAll('.slide');
-  for (let i = 0; i < BASE_IMAGES.length; i++) initBaseSlide(i, slides);
-}
-
-function initBaseSlide(idx, slides) {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = BASE_IMAGES[idx];
-  img.onload = () => {
-    const canvas = slides[idx].querySelector('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    const origData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Build mask: identify body panel pixels
-    const mask = new Uint8Array(canvas.width * canvas.height);
-    for (let i = 0; i < mask.length; i++) {
-      const r = origData.data[i*4], g = origData.data[i*4+1], b = origData.data[i*4+2];
-      const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-      const maxC = Math.max(r, g, b), minC = Math.min(r, g, b);
-      const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
-
-      let score = 0;
-      if (sat < 0.10) {
-        if (lum > 0.65) score = 1.0;
-        else if (lum > 0.42) score = (lum - 0.42) / 0.23;
-      } else if (sat < 0.18 && lum > 0.55) {
-        score = (1 - (sat - 0.10) / 0.08) * Math.min(1, (lum - 0.55) / 0.2);
-      }
-      mask[i] = Math.round(score * 255);
-    }
-
-    baseSlideData[idx] = { origData: new Uint8ClampedArray(origData.data), mask, canvas, width: canvas.width, height: canvas.height };
-    baseLoaded++;
-    if (baseLoaded === BASE_IMAGES.length) applyAllColors();
-  };
-}
-
-function applyColorToSlide(idx, hex) {
-  const sd = baseSlideData[idx];
-  if (!sd) return;
-  const ctx = sd.canvas.getContext('2d');
-
-  if (hex === '#ffffff') {
-    ctx.putImageData(new ImageData(new Uint8ClampedArray(sd.origData), sd.width, sd.height), 0, 0);
-    return;
-  }
-
-  const tr = parseInt(hex.slice(1, 3), 16) / 255;
-  const tg = parseInt(hex.slice(3, 5), 16) / 255;
-  const tb = parseInt(hex.slice(5, 7), 16) / 255;
-
-  const newData = new Uint8ClampedArray(sd.origData);
-
-  for (let i = 0; i < sd.mask.length; i++) {
-    const s = sd.mask[i] / 255;
-    if (s > 0) {
-      const j = i * 4;
-      newData[j]     = Math.round(newData[j]     * (1 - s + s * tr));
-      newData[j + 1] = Math.round(newData[j + 1] * (1 - s + s * tg));
-      newData[j + 2] = Math.round(newData[j + 2] * (1 - s + s * tb));
-    }
-  }
-
-  ctx.putImageData(new ImageData(newData, sd.width, sd.height), 0, 0);
-}
-
-function applyAllColors() {
-  for (let i = 0; i < BASE_IMAGES.length; i++) applyColorToSlide(i, st.color.hex);
-}
-
-// --- Custom color ---
-let customColorName = null;
-
-document.getElementById('color-upload').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const resized = await resizeImage(file, 256);
-  // Analyze the color from the image
-  document.getElementById('hex-input').value = 'Analyzing...';
-  try {
-    const resp = await fetch('/api/analyze-color', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ photo: resized.base64, mimeType: resized.mimeType }),
-    });
-    const text = await resp.text();
-    if (!resp.ok) throw new Error(text);
-    const { colorName } = JSON.parse(text);
-    document.getElementById('hex-input').value = colorName;
-    customColorName = colorName;
-  } catch (err) {
-    document.getElementById('hex-input').value = '';
-    alert('Could not identify color: ' + err.message);
-  }
-});
-
-function applyCustomColor() {
-  const input = document.getElementById('hex-input').value.trim();
-  if (!input) return;
-
-  // Deselect swatches
-  document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
-
-  const colorName = customColorName || input;
-  customColorName = null;
-
-  // Create a virtual color object
-  const customColor = { name: colorName, hex: input.startsWith('#') ? input : '#888888' };
-  st.color = customColor;
-  document.getElementById('cn').textContent = colorName;
-  updateBadge();
-  updatePrice();
-
-  if (customCarDescription) {
-    recolorCustomCar(customColor);
-  }
-}
-
-document.getElementById('hex-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') applyCustomColor();
-});
-
-// --- Upload & Generate ---
-let uploadedPhoto = null;
-
-document.getElementById('car-upload').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const label = document.getElementById('upload-label');
-  label.classList.add('has-file');
-  label.querySelector('input').nextElementSibling.nextSibling.textContent = ' ' + file.name;
-  document.getElementById('gen-btn').style.display = 'block';
-  document.getElementById('gen-btn').disabled = false;
-  // Resize and store
-  resizeImage(file, 1024).then(result => {
-    uploadedPhoto = result;
-  });
-});
-
-function resizeImage(file, maxSize) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const base64 = dataUrl.split(',')[1];
-        resolve({ base64, mimeType: 'image/jpeg' });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function showLoading(msg) {
-  let overlay = document.getElementById('loading-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'loading-overlay';
-    overlay.className = 'loading-overlay';
-    overlay.innerHTML = '<div class="spinner"></div><div class="loading-text" id="loading-text"></div>';
-    carouselEl.appendChild(overlay);
-  }
-  overlay.style.display = 'flex';
-  document.getElementById('loading-text').textContent = msg || 'Generating showroom views...';
-}
-
-function hideLoading() {
-  const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
-async function generateViews() {
-  if (!uploadedPhoto) return;
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true;
-  btn.textContent = 'Generating...';
-  showLoading('Analyzing your car and generating 6 showroom views...');
-
-  try {
-    const resp = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }),
-    });
-
-    const text = await resp.text();
-    if (!resp.ok) {
-      let msg = 'Generation failed';
-      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
-      throw new Error(msg);
-    }
-
-    const { images } = JSON.parse(text);
-
-    // Load generated images into carousel
-    const imgElements = await Promise.all(images.map(img => {
-      return new Promise(resolve => {
-        const el = new Image();
-        el.onload = () => resolve(el);
-        el.src = `data:${img.mimeType};base64,${img.data}`;
-      });
-    }));
-
-    const { slides, preserved } = createSlides(imgElements.length);
-    imgElements.forEach((img, i) => {
-      const canvas = slides[i].querySelector('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-    });
-    usingRealPhotos = true;
-    currentSlide = 0;
-    commitSlides(slides, 0, imgElements.length);
-
-    // Store car description for recoloring
-    const parsed = JSON.parse(text);
-    customCarDescription = parsed.carDescription || null;
-    // Clear recolor cache for new car
-    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
-    // Update badge with identified car
-    const desc = customCarDescription || 'Your car';
-    const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
-    document.getElementById('badge').textContent = shortDesc + ' · ' + st.color.name;
-  } catch (err) {
-    alert('Generation failed: ' + err.message);
-  } finally {
-    hideLoading();
-    btn.disabled = false;
-    btn.textContent = 'Generate showroom views';
-  }
-}
-
-// --- Custom car recoloring ---
-async function recolorCustomCar(color) {
-  const cacheKey = color.name + '|' + st.finish.name;
-
-  // Check cache first
-  if (recolorCache[cacheKey]) {
-    displayGeneratedImages(recolorCache[cacheKey]);
-    updateCustomBadge(color);
-    return;
-  }
-
-  showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
-
-  try {
-    const resp = await fetch('/api/recolor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        carDescription: customCarDescription,
-        colorName: color.name,
-        finishName: st.finish.name,
-      }),
-    });
-
-    const text = await resp.text();
-    if (!resp.ok) {
-      let msg = 'Recolor failed';
-      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
-      throw new Error(msg);
-    }
-
-    const { images } = JSON.parse(text);
-    recolorCache[cacheKey] = images;
-    displayGeneratedImages(images);
-    updateCustomBadge(color);
-  } catch (err) {
-    alert('Recolor failed: ' + err.message);
-  } finally {
-    hideLoading();
-  }
-}
-
-function displayGeneratedImages(images) {
-  Promise.all(images.map(img => {
-    return new Promise(resolve => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.src = `data:${img.mimeType};base64,${img.data}`;
-    });
-  })).then(imgElements => {
-    const { slides } = createSlides(imgElements.length);
-    imgElements.forEach((img, i) => {
-      const canvas = slides[i].querySelector('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-    });
-    usingRealPhotos = true;
-    currentSlide = 0;
-    commitSlides(slides, 0, imgElements.length);
-  });
-}
-
-function updateCustomBadge(color) {
-  const desc = customCarDescription || 'Your car';
-  const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
-  document.getElementById('badge').textContent = shortDesc + ' · ' + color.name;
-}
-
-// Initialize with base white images
-const initResult = createSlides(BASE_IMAGES.length);
-commitSlides(initResult.slides, initResult.preserved, BASE_IMAGES.length);
-initBaseSlides();
-</script>
+<script src="/js/main.js"></script>
 </body>
 </html>

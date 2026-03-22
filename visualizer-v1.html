@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tesla Model 3 — Wrap Visualizer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; padding: 1.5rem; }
+h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+.sub { font-size: 13px; color: #888; margin-bottom: 1.25rem; }
+.layout { display: grid; grid-template-columns: 1fr 265px; gap: 1.25rem; align-items: start; }
+.carousel { background: #111; border-radius: 14px; overflow: hidden; position: relative; aspect-ratio: 16/10; }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s; }
+.slide.active { opacity: 1; }
+.slide canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+.arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 10; transition: background 0.15s; backdrop-filter: blur(4px); }
+.arrow:hover { background: rgba(0,0,0,0.8); }
+.arrow-l { left: 12px; }
+.arrow-r { right: 12px; }
+.dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.2s; padding: 0; }
+.dot.active { background: #fff; transform: scale(1.2); }
+.badge { position: absolute; bottom: 12px; left: 14px; background: rgba(0,0,0,0.7); border-radius: 6px; padding: 5px 11px; font-size: 11px; color: #ccc; z-index: 10; backdrop-filter: blur(4px); }
+.controls { display: flex; flex-direction: column; gap: 0.85rem; }
+.card { background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 0.9rem 1.1rem; }
+.lbl { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
+.color-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; margin-bottom: 7px; }
+.sw { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: transform 0.12s, border-color 0.12s; }
+.sw:hover { transform: scale(1.12); }
+.sw.on { border-color: #fff; transform: scale(1.12); }
+.color-name { font-size: 11px; color: #666; }
+.row { display: flex; gap: 5px; }
+.pill { flex: 1; font-size: 11px; padding: 5px 4px; border-radius: 6px; border: 0.5px solid #333; background: transparent; cursor: pointer; color: #888; text-align: center; transition: all 0.12s; font-family: inherit; }
+.pill:hover { background: #222; }
+.pill.on { background: #fff; color: #000; border-color: #fff; }
+.price-card { background: #1a1a1a; border-radius: 12px; padding: 0.9rem 1.1rem; text-align: center; border: 0.5px solid #2a2a2a; }
+.price-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+.price-val { font-size: 26px; font-weight: 500; }
+.cta { width: 100%; padding: 11px; font-size: 13px; font-weight: 500; border-radius: 8px; background: #fff; color: #000; border: none; cursor: pointer; transition: opacity 0.12s; font-family: inherit; }
+.cta:hover { opacity: 0.85; }
+.custom-color-row { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
+.hex-input { flex: 1; background: #111; border: 0.5px solid #333; border-radius: 6px; padding: 6px 8px; color: #fff; font-size: 11px; font-family: inherit; outline: none; }
+.hex-input:focus { border-color: #555; }
+.hex-input::placeholder { color: #555; }
+.color-upload-label { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0.5px solid #333; border-radius: 6px; cursor: pointer; color: #666; transition: all 0.15s; flex-shrink: 0; }
+.color-upload-label:hover { border-color: #555; color: #aaa; }
+.apply-color-btn { background: #333; border: none; color: #fff; font-size: 11px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; flex-shrink: 0; transition: background 0.15s; }
+.apply-color-btn:hover { background: #444; }
+.upload-card { background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 12px; padding: 0.9rem 1.1rem; }
+.upload-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1.5px dashed #333; border-radius: 8px; cursor: pointer; color: #888; font-size: 12px; transition: all 0.15s; }
+.upload-label:hover { border-color: #555; color: #aaa; background: rgba(255,255,255,0.03); }
+.upload-label.has-file { border-color: #4a4; color: #8c8; border-style: solid; }
+.gen-btn { width: 100%; padding: 9px; font-size: 12px; font-weight: 500; border-radius: 8px; background: #333; color: #fff; border: none; cursor: pointer; transition: all 0.15s; font-family: inherit; margin-top: 8px; display: none; }
+.gen-btn:hover { background: #444; }
+.gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 12px; backdrop-filter: blur(4px); }
+.spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: #999; }
+@media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Tesla Model 3 — wrap visualizer</h1>
+<p class="sub">Choose a color to preview your wrap in real time</p>
+<div class="layout">
+  <div class="carousel" id="carousel">
+    <button class="arrow arrow-l" onclick="nav(-1)">&#8249;</button>
+    <button class="arrow arrow-r" onclick="nav(1)">&#8250;</button>
+    <div class="dots" id="dots"></div>
+    <div class="badge" id="badge">Pearl white · Gloss</div>
+  </div>
+  <div class="controls">
+    <div class="card">
+      <div class="lbl">Wrap color</div>
+      <div class="color-grid" id="cg"></div>
+      <div class="color-name" id="cn">Pearl white</div>
+      <div class="custom-color-row">
+        <input type="text" id="hex-input" class="hex-input" placeholder="#hex or color name" spellcheck="false">
+        <label class="color-upload-label" for="color-upload">
+          <input type="file" id="color-upload" accept="image/*" hidden>
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </label>
+        <button class="apply-color-btn" id="apply-color-btn" onclick="applyCustomColor()">Apply</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="lbl">Finish</div>
+      <div class="row" id="fr"></div>
+    </div>
+    <div class="upload-card">
+      <div class="lbl">Your car</div>
+      <label class="upload-label" id="upload-label" for="car-upload">
+        <input type="file" id="car-upload" accept="image/*" hidden>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload a photo of your car
+      </label>
+      <button class="gen-btn" id="gen-btn" onclick="generateViews()">Generate showroom views</button>
+    </div>
+    <div class="price-card">
+      <div class="price-label">Estimated starting price</div>
+      <div class="price-val" id="pv">$2,200</div>
+    </div>
+    <button class="cta" onclick="alert('Quote request sent! We will contact you shortly.')">Get a free quote</button>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  {name:'Pearl white', hex:'#ffffff'},
+  {name:'Matte black', hex:'#0a0a0a', finish:'Matte', images:['./images/matte-black-1.webp','./images/matte-black-2.webp','./images/matte-black-3.webp','./images/matte-black-4.webp','./images/matte-black-5.webp','./images/matte-black-6.webp']},
+  {name:'Matte red', hex:'#c0201e', finish:'Matte', images:['./images/matte-red-2.webp','./images/matte-red-3.webp','./images/matte-red-4.webp','./images/matte-red-7.webp','./images/matte-red-1.webp','./images/matte-red-5.webp']},
+  {name:'Sunflower', hex:'#d4a017'},
+  {name:'Ocean blue', hex:'#1a3a8a'},
+  {name:'British green', hex:'#2a5a3a'},
+  {name:'Burnt orange', hex:'#c4651a', images:['./images/burnt-orange-1.webp','./images/burnt-orange-2.webp','./images/burnt-orange-3.webp','./images/burnt-orange-4.webp','./images/burnt-orange-5.webp']},
+  {name:'Royal purple', hex:'#5a1a8a'},
+  {name:'Gunmetal', hex:'#4a4e5a'},
+  {name:'Rose gold', hex:'#b87868'},
+];
+const FINISHES = [
+  {name:'Gloss', add:0},
+  {name:'Matte', add:100},
+  {name:'Satin', add:150},
+  {name:'Chrome', add:600},
+];
+
+const BASE_IMAGES = ['./images/1.webp','./images/2.webp','./images/3.webp','./images/4.webp','./images/5.webp'];
+let currentSlide = 0;
+let st = { color: COLORS[0], finish: FINISHES[0] };
+const baseSlideData = []; // for recoloring: {origData, mask, canvas, width, height}
+let activeSlideCount = BASE_IMAGES.length;
+let usingRealPhotos = false;
+let customCarDescription = null; // set after upload+analysis
+const recolorCache = {}; // cache: "colorName|finishName" -> images array
+
+const carouselEl = document.getElementById('carousel');
+
+// Build UI
+const cg = document.getElementById('cg');
+function buildColorGrid() {
+  cg.innerHTML = '';
+  const filtered = COLORS.filter(c => !c.finish || c.finish === st.finish.name);
+  filtered.forEach((c) => {
+    const s = document.createElement('div');
+    s.className = 'sw' + (c === st.color ? ' on' : '');
+    s.style.background = c.hex;
+    if (c.hex === '#ffffff') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
+    if (c.hex === '#0a0a0a') s.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
+    s.title = c.name;
+    s.onclick = () => {
+      document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+      s.classList.add('on');
+      st.color = c;
+      document.getElementById('cn').textContent = c.name;
+      updateBadge();
+      switchColor(c);
+      updatePrice();
+    };
+    cg.appendChild(s);
+  });
+  // If current color is not in filtered list, select the first one
+  if (!filtered.includes(st.color)) {
+    st.color = filtered[0];
+    document.getElementById('cn').textContent = st.color.name;
+    updateBadge();
+    switchColor(st.color);
+    cg.querySelector('.sw').classList.add('on');
+  }
+}
+buildColorGrid();
+
+const fr = document.getElementById('fr');
+FINISHES.forEach((f, i) => {
+  const b = document.createElement('button');
+  b.className = 'pill' + (i === 0 ? ' on' : '');
+  b.textContent = f.name;
+  b.onclick = () => {
+    document.querySelectorAll('#fr .pill').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    st.finish = f;
+    buildColorGrid();
+    updateBadge();
+    updatePrice();
+  };
+  fr.appendChild(b);
+});
+
+function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
+function updatePrice() { document.getElementById('pv').textContent = '$' + (2200 + st.finish.add).toLocaleString(); }
+
+// --- Dynamic slide management ---
+// Create slides offscreen, return them for painting before DOM insertion
+function createSlides(count) {
+  const preserved = Math.min(currentSlide, count - 1);
+  const newSlides = [];
+  for (let i = 0; i < count; i++) {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i === preserved ? ' active' : '');
+    div.dataset.idx = i;
+    div.innerHTML = '<canvas></canvas>';
+    newSlides.push(div);
+  }
+  return { slides: newSlides, preserved };
+}
+
+// Swap painted slides into the DOM atomically
+function commitSlides(newSlides, preserved, count) {
+  carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
+  const anchor = carouselEl.querySelector('.arrow-l');
+  newSlides.forEach(s => carouselEl.insertBefore(s, anchor));
+  activeSlideCount = count;
+  currentSlide = preserved;
+  buildDots(count);
+}
+
+function buildDots(count) {
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('button');
+    d.className = 'dot' + (i === currentSlide ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+}
+
+// Carousel navigation
+function nav(dir) { goTo((currentSlide + dir + activeSlideCount) % activeSlideCount); }
+function goTo(idx) {
+  const slides = carouselEl.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = idx;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+
+// Touch/swipe support
+let touchStartX = 0;
+carouselEl.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+carouselEl.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) nav(dx > 0 ? -1 : 1);
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') nav(-1);
+  if (e.key === 'ArrowRight') nav(1);
+});
+
+// --- Color switching ---
+// Preload cache so repeat selections are instant
+const imgCache = {};
+function preloadImages(srcs) {
+  return Promise.all(srcs.map(src => {
+    if (imgCache[src]) return Promise.resolve(imgCache[src]);
+    return new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+      img.onload = () => { imgCache[src] = img; resolve(img); };
+    });
+  }));
+}
+
+function switchColor(color) {
+  // If custom car is active, recolor via API
+  if (customCarDescription) {
+    recolorCustomCar(color);
+    return;
+  }
+
+  if (color.images) {
+    preloadImages(color.images).then(imgs => {
+      const { slides, preserved } = createSlides(color.images.length);
+      imgs.forEach((img, i) => {
+        const canvas = slides[i].querySelector('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+      });
+      usingRealPhotos = true;
+      commitSlides(slides, preserved, color.images.length);
+    });
+  } else {
+    if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
+      preloadImages(BASE_IMAGES).then(imgs => {
+        const { slides, preserved } = createSlides(BASE_IMAGES.length);
+        usingRealPhotos = false;
+        commitSlides(slides, preserved, BASE_IMAGES.length);
+        initBaseSlides();
+      });
+    } else {
+      applyAllColors();
+    }
+  }
+}
+
+// --- Color engine — direct pixel manipulation on canvas ---
+let baseLoaded = 0;
+
+function initBaseSlides() {
+  baseLoaded = 0;
+  baseSlideData.length = 0;
+  const slides = carouselEl.querySelectorAll('.slide');
+  for (let i = 0; i < BASE_IMAGES.length; i++) initBaseSlide(i, slides);
+}
+
+function initBaseSlide(idx, slides) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = BASE_IMAGES[idx];
+  img.onload = () => {
+    const canvas = slides[idx].querySelector('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const origData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Build mask: identify body panel pixels
+    const mask = new Uint8Array(canvas.width * canvas.height);
+    for (let i = 0; i < mask.length; i++) {
+      const r = origData.data[i*4], g = origData.data[i*4+1], b = origData.data[i*4+2];
+      const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+      const maxC = Math.max(r, g, b), minC = Math.min(r, g, b);
+      const sat = maxC > 0 ? (maxC - minC) / maxC : 0;
+
+      let score = 0;
+      if (sat < 0.10) {
+        if (lum > 0.65) score = 1.0;
+        else if (lum > 0.42) score = (lum - 0.42) / 0.23;
+      } else if (sat < 0.18 && lum > 0.55) {
+        score = (1 - (sat - 0.10) / 0.08) * Math.min(1, (lum - 0.55) / 0.2);
+      }
+      mask[i] = Math.round(score * 255);
+    }
+
+    baseSlideData[idx] = { origData: new Uint8ClampedArray(origData.data), mask, canvas, width: canvas.width, height: canvas.height };
+    baseLoaded++;
+    if (baseLoaded === BASE_IMAGES.length) applyAllColors();
+  };
+}
+
+function applyColorToSlide(idx, hex) {
+  const sd = baseSlideData[idx];
+  if (!sd) return;
+  const ctx = sd.canvas.getContext('2d');
+
+  if (hex === '#ffffff') {
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(sd.origData), sd.width, sd.height), 0, 0);
+    return;
+  }
+
+  const tr = parseInt(hex.slice(1, 3), 16) / 255;
+  const tg = parseInt(hex.slice(3, 5), 16) / 255;
+  const tb = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const newData = new Uint8ClampedArray(sd.origData);
+
+  for (let i = 0; i < sd.mask.length; i++) {
+    const s = sd.mask[i] / 255;
+    if (s > 0) {
+      const j = i * 4;
+      newData[j]     = Math.round(newData[j]     * (1 - s + s * tr));
+      newData[j + 1] = Math.round(newData[j + 1] * (1 - s + s * tg));
+      newData[j + 2] = Math.round(newData[j + 2] * (1 - s + s * tb));
+    }
+  }
+
+  ctx.putImageData(new ImageData(newData, sd.width, sd.height), 0, 0);
+}
+
+function applyAllColors() {
+  for (let i = 0; i < BASE_IMAGES.length; i++) applyColorToSlide(i, st.color.hex);
+}
+
+// --- Custom color ---
+let customColorName = null;
+
+document.getElementById('color-upload').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const resized = await resizeImage(file, 256);
+  // Analyze the color from the image
+  document.getElementById('hex-input').value = 'Analyzing...';
+  try {
+    const resp = await fetch('/api/analyze-color', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: resized.base64, mimeType: resized.mimeType }),
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(text);
+    const { colorName } = JSON.parse(text);
+    document.getElementById('hex-input').value = colorName;
+    customColorName = colorName;
+  } catch (err) {
+    document.getElementById('hex-input').value = '';
+    alert('Could not identify color: ' + err.message);
+  }
+});
+
+function applyCustomColor() {
+  const input = document.getElementById('hex-input').value.trim();
+  if (!input) return;
+
+  // Deselect swatches
+  document.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+
+  const colorName = customColorName || input;
+  customColorName = null;
+
+  // Create a virtual color object
+  const customColor = { name: colorName, hex: input.startsWith('#') ? input : '#888888' };
+  st.color = customColor;
+  document.getElementById('cn').textContent = colorName;
+  updateBadge();
+  updatePrice();
+
+  if (customCarDescription) {
+    recolorCustomCar(customColor);
+  }
+}
+
+document.getElementById('hex-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') applyCustomColor();
+});
+
+// --- Upload & Generate ---
+let uploadedPhoto = null;
+
+document.getElementById('car-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const label = document.getElementById('upload-label');
+  label.classList.add('has-file');
+  label.querySelector('input').nextElementSibling.nextSibling.textContent = ' ' + file.name;
+  document.getElementById('gen-btn').style.display = 'block';
+  document.getElementById('gen-btn').disabled = false;
+  // Resize and store
+  resizeImage(file, 1024).then(result => {
+    uploadedPhoto = result;
+  });
+});
+
+function resizeImage(file, maxSize) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const base64 = dataUrl.split(',')[1];
+        resolve({ base64, mimeType: 'image/jpeg' });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function showLoading(msg) {
+  let overlay = document.getElementById('loading-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = '<div class="spinner"></div><div class="loading-text" id="loading-text"></div>';
+    carouselEl.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  document.getElementById('loading-text').textContent = msg || 'Generating showroom views...';
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function generateViews() {
+  if (!uploadedPhoto) return;
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  showLoading('Analyzing your car and generating 6 showroom views...');
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      let msg = 'Generation failed';
+      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
+      throw new Error(msg);
+    }
+
+    const { images } = JSON.parse(text);
+
+    // Load generated images into carousel
+    const imgElements = await Promise.all(images.map(img => {
+      return new Promise(resolve => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.src = `data:${img.mimeType};base64,${img.data}`;
+      });
+    }));
+
+    const { slides, preserved } = createSlides(imgElements.length);
+    imgElements.forEach((img, i) => {
+      const canvas = slides[i].querySelector('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    });
+    usingRealPhotos = true;
+    currentSlide = 0;
+    commitSlides(slides, 0, imgElements.length);
+
+    // Store car description for recoloring
+    const parsed = JSON.parse(text);
+    customCarDescription = parsed.carDescription || null;
+    // Clear recolor cache for new car
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    // Update badge with identified car
+    const desc = customCarDescription || 'Your car';
+    const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
+    document.getElementById('badge').textContent = shortDesc + ' · ' + st.color.name;
+  } catch (err) {
+    alert('Generation failed: ' + err.message);
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.textContent = 'Generate showroom views';
+  }
+}
+
+// --- Custom car recoloring ---
+async function recolorCustomCar(color) {
+  const cacheKey = color.name + '|' + st.finish.name;
+
+  // Check cache first
+  if (recolorCache[cacheKey]) {
+    displayGeneratedImages(recolorCache[cacheKey]);
+    updateCustomBadge(color);
+    return;
+  }
+
+  showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
+
+  try {
+    const resp = await fetch('/api/recolor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carDescription: customCarDescription,
+        colorName: color.name,
+        finishName: st.finish.name,
+      }),
+    });
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      let msg = 'Recolor failed';
+      try { msg = JSON.parse(text).error || msg; } catch { msg = text || msg; }
+      throw new Error(msg);
+    }
+
+    const { images } = JSON.parse(text);
+    recolorCache[cacheKey] = images;
+    displayGeneratedImages(images);
+    updateCustomBadge(color);
+  } catch (err) {
+    alert('Recolor failed: ' + err.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+function displayGeneratedImages(images) {
+  Promise.all(images.map(img => {
+    return new Promise(resolve => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.src = `data:${img.mimeType};base64,${img.data}`;
+    });
+  })).then(imgElements => {
+    const { slides } = createSlides(imgElements.length);
+    imgElements.forEach((img, i) => {
+      const canvas = slides[i].querySelector('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    });
+    usingRealPhotos = true;
+    currentSlide = 0;
+    commitSlides(slides, 0, imgElements.length);
+  });
+}
+
+function updateCustomBadge(color) {
+  const desc = customCarDescription || 'Your car';
+  const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
+  document.getElementById('badge').textContent = shortDesc + ' · ' + color.name;
+}
+
+// Initialize with base white images
+const initResult = createSlides(BASE_IMAGES.length);
+commitSlides(initResult.slides, initResult.preserved, BASE_IMAGES.length);
+initBaseSlides();
+</script>
+</body>
+</html>
