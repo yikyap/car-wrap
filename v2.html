@@ -374,6 +374,8 @@ function resizeImage(file, maxSize) {
   });
 }
 
+function parseError(text, fallback) { try { return JSON.parse(text).error || fallback; } catch(e) { return fallback; } }
+
 function showLoading(msg) {
   let ov = document.getElementById('loading-overlay');
   if (!ov) { ov = document.createElement('div'); ov.id = 'loading-overlay'; ov.className = 'loading-overlay'; ov.innerHTML = '<div class="spinner"></div><div class="loading-text" id="loading-text"></div>'; carouselEl.appendChild(ov); }
@@ -414,7 +416,7 @@ async function generateViews() {
     const timeout = setTimeout(() => controller.abort(), 120000);
     const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }), signal: controller.signal }).finally(() => clearTimeout(timeout));
     const text = await resp.text();
-    if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
+    if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
     const parsed = JSON.parse(text);
     await displayGeneratedImages(parsed.images);
     customCarDescription = parsed.carDescription || null;
@@ -441,7 +443,7 @@ async function generateFromDescription(carDesc) {
     }).finally(() => clearTimeout(timeout));
     console.log('generate-from-description response status:', resp.status);
     const text = await resp.text();
-    if (!resp.ok) throw new Error(JSON.parse(text).error || 'Generation failed');
+    if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
     const parsed = JSON.parse(text);
     await displayGeneratedImages(parsed.images);
     customCarDescription = carDesc;
@@ -468,7 +470,7 @@ async function recolorCustomCar(color) {
     if (uploadedPhoto) body.userPhoto = { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType };
     const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const text = await resp.text();
-    if (!resp.ok) throw new Error(JSON.parse(text).error || 'Recolor failed');
+    if (!resp.ok) throw new Error(parseError(text, 'Recolor failed'));
     const { images } = JSON.parse(text);
     recolorCache[cacheKey] = images;
     await displayGeneratedImages(images);
@@ -1079,7 +1081,7 @@ async function recolorWithDescription(desc, colorName, finishName) {
       body: JSON.stringify({ carDescription: desc, colorName, finishName, userPhoto: uploadedPhoto ? { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType } : undefined }),
     });
     const text = await resp.text();
-    if (!resp.ok) throw new Error(JSON.parse(text).error || 'Failed');
+    if (!resp.ok) throw new Error(parseError(text, 'Failed'));
     const { images } = JSON.parse(text);
     await displayGeneratedImages(images);
     customCarDescription = desc;
