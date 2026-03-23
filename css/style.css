@@ -69,6 +69,28 @@ ul { list-style: none; }
 .hero-stat-num { font-size: 32px; font-weight: 700; color: var(--gold); }
 .hero-stat-label { font-size: 12px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
 
+/* === Collage === */
+.collage { padding: 0; background: var(--black); }
+.collage-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 220px; gap: 4px; }
+.collage-item { overflow: hidden; position: relative; }
+.collage-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease, filter 0.4s; }
+.collage-item:hover img { transform: scale(1.08); filter: brightness(1.15); }
+.collage-item.tall { grid-row: span 2; }
+.collage-item.wide { grid-column: span 2; }
+.collage-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.6) 100%); opacity: 0; transition: opacity 0.3s; display: flex; align-items: flex-end; padding: 1rem; }
+.collage-item:hover .collage-overlay { opacity: 1; }
+.collage-overlay span { font-size: 13px; font-weight: 500; color: var(--white); }
+.collage-cta { text-align: center; padding: 2.5rem 0; background: var(--black); }
+
+@media (max-width: 900px) {
+  .collage-grid { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 180px; }
+}
+@media (max-width: 600px) {
+  .collage-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 150px; }
+  .collage-item.wide { grid-column: span 1; }
+  .collage-item.tall { grid-row: span 1; }
+}
+
 /* === Services === */
 .services { padding: var(--section-pad) 0; background: var(--black); }
 .services-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; }
