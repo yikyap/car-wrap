@@ -107,6 +107,28 @@ if (form) {
   });
 }
 
+// === Auto-scroll reviews ===
+const reviewsContainer = document.querySelector('.trust-reviews');
+if (reviewsContainer) {
+  let reviewInterval;
+  const startAutoScroll = () => {
+    reviewInterval = setInterval(() => {
+      const card = reviewsContainer.querySelector('.trust-review-card');
+      if (!card) return;
+      const cardWidth = card.offsetWidth + 12; // card + gap
+      const maxScroll = reviewsContainer.scrollWidth - reviewsContainer.clientWidth;
+      if (reviewsContainer.scrollLeft >= maxScroll - 2) {
+        reviewsContainer.scrollLeft = 0;
+      } else {
+        reviewsContainer.scrollLeft += cardWidth;
+      }
+    }, 2000);
+  };
+  startAutoScroll();
+  reviewsContainer.addEventListener('pointerdown', () => clearInterval(reviewInterval));
+  reviewsContainer.addEventListener('pointerup', () => startAutoScroll());
+}
+
 // === Smooth scroll for nav links ===
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', (e) => {
