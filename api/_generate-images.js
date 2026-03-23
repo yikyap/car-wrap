@@ -97,7 +97,7 @@ ${fullPrompt}
 
 Camera angle for this image: ${ANGLE_PROMPTS[i]}.
 
-CRITICAL: Generate the EXACT same car from the reference, just viewed from a different angle. Same body shape, same color, same wheels, same everything. Do NOT generate a different car.`,
+CRITICAL: Generate the EXACT same car from the hero reference image, just viewed from a different angle. The body color, finish, wheels, trim — EVERYTHING must be identical to the hero reference image. If the hero image shows a matte black car, this image MUST also be matte black. Do NOT revert to the car's original color. Do NOT generate a different car.`,
       });
 
       return generateImageWithRetry(ai, parts);
