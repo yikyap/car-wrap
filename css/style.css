@@ -158,6 +158,47 @@ select.form-field option { background: var(--navy); }
 .social-link { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--gray-400); }
 .social-link:hover { background: var(--gold); color: var(--black); }
 
+/* === Estimate Bar === */
+.estimate-bar { padding: 3.5rem 0; background: var(--navy); text-align: center; position: relative; overflow: hidden; }
+.estimate-bar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(212,168,50,0.08) 0%, transparent 50%); }
+.estimate-bar .container { position: relative; z-index: 2; }
+.estimate-bar-title { font-size: clamp(22px, 4vw, 32px); font-weight: 700; letter-spacing: 2px; margin-bottom: 0.5rem; }
+.estimate-bar-sub { font-size: 14px; color: var(--gray-400); margin-bottom: 2rem; }
+.estimate-bar-form { display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+.estimate-field { padding: 14px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: var(--white); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.2s; min-width: 180px; }
+.estimate-field:focus { border-color: var(--gold); }
+.estimate-field::placeholder { color: var(--gray-400); }
+.estimate-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer; }
+.estimate-select option { background: var(--navy); }
+.estimate-btn { white-space: nowrap; border-color: var(--gold) !important; color: var(--gold) !important; }
+.estimate-btn:hover { background: var(--gold) !important; color: var(--black) !important; }
+
+/* === Quote Form (expandable) === */
+.quote-form-section { max-height: 0; overflow: hidden; background: var(--black); transition: max-height 0.5s ease; }
+.quote-form-section.open { max-height: 1400px; }
+.quote-form-inner { max-width: 720px; margin: 0 auto; padding: 3rem 0; }
+.quote-form-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+.quote-form-header h2 { font-size: clamp(18px, 3vw, 24px); font-weight: 600; letter-spacing: 1px; }
+.quote-form-close { background: none; border: none; color: var(--gray-400); font-size: 28px; cursor: pointer; padding: 0 8px; transition: color 0.2s; line-height: 1; }
+.quote-form-close:hover { color: var(--white); }
+.quote-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.quote-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.quote-field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.quote-label { font-size: 14px; font-weight: 500; color: var(--white); }
+.quote-req { font-size: 12px; color: var(--gray-400); font-weight: 400; }
+.quote-checkboxes { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin-top: 0.25rem; }
+.quote-checkbox { display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(255,255,255,0.8); cursor: pointer; }
+.quote-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
+.quote-submit { width: 100%; justify-content: center; margin-top: 0.5rem; }
+
+@media (max-width: 900px) {
+  .estimate-bar-form { flex-direction: column; align-items: stretch; max-width: 400px; margin: 0 auto; }
+  .estimate-field { min-width: 0; }
+}
+@media (max-width: 600px) {
+  .quote-form-grid { grid-template-columns: 1fr; }
+}
+
 /* === Page Banner === */
 .page-banner { padding: 8rem 0 3rem; background: var(--navy); text-align: center; }
 .page-banner h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; }

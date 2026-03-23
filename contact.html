@@ -39,26 +39,62 @@
 <section class="contact" style="padding-top:2rem;">
   <div class="container">
     <div class="contact-grid">
-      <form class="contact-form reveal" id="contact-form">
-        <div class="form-row">
-          <input type="text" name="name" class="form-field" placeholder="Your Name" required>
-          <input type="email" name="email" class="form-field" placeholder="Email Address" required>
+      <form class="quote-form reveal" id="contact-form">
+        <div class="quote-form-grid">
+          <div class="quote-field-group">
+            <label class="quote-label">First Name <span class="quote-req">(required)</span></label>
+            <input type="text" name="firstName" class="form-field" required>
+          </div>
+          <div class="quote-field-group">
+            <label class="quote-label">Last Name <span class="quote-req">(required)</span></label>
+            <input type="text" name="lastName" class="form-field" required>
+          </div>
         </div>
-        <div class="form-row">
-          <input type="tel" name="phone" class="form-field" placeholder="Phone Number">
-          <input type="text" name="vehicle" class="form-field" placeholder="Vehicle (Year Make Model)">
+        <div class="quote-field-group">
+          <label class="quote-label">Service Interested In</label>
+          <select name="service" class="form-field">
+            <option value="" disabled selected>Select an option</option>
+            <option>Color Change Wrap</option>
+            <option>Paint Protection Film (PPF)</option>
+            <option>Window Tint</option>
+            <option>Powder Coating</option>
+            <option>Body Kit</option>
+            <option>Custom Graphics</option>
+            <option>Multiple Services</option>
+          </select>
         </div>
-        <select name="service" class="form-field">
-          <option value="" disabled selected>Service Interested In</option>
-          <option>Color Change Wrap</option>
-          <option>Paint Protection Film (PPF)</option>
-          <option>Window Tint</option>
-          <option>Powder Coating</option>
-          <option>Body Kit</option>
-          <option>Multiple Services</option>
-        </select>
-        <textarea name="message" class="form-field" placeholder="Tell us about your project..."></textarea>
-        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;">Send Quote Request</button>
+        <div class="quote-field-group">
+          <label class="quote-label">Vehicle Make/Model <span class="quote-req">(required)</span></label>
+          <input type="text" name="vehicle" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Year</label>
+          <input type="text" name="year" class="form-field">
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Email Address <span class="quote-req">(required)</span></label>
+          <input type="email" name="email" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Phone Number To Reach You At <span class="quote-req">(required)</span></label>
+          <input type="tel" name="phone" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Add'l Info</label>
+          <textarea name="message" class="form-field"></textarea>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">How Did You Hear Of Us? <span class="quote-req">(required)</span></label>
+          <div class="quote-checkboxes">
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Google"> Google</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Yelp"> Yelp</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Instagram"> Instagram</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Facebook"> Facebook</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Referral"> Referral</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Other"> Other</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-gold quote-submit">Submit Quote Request</button>
       </form>
       <div class="contact-info reveal">
         <div class="contact-info-item">

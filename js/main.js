@@ -39,6 +39,45 @@ filterBtns.forEach(btn => {
   });
 });
 
+// === Estimate bar expand ===
+const expandBtn = document.getElementById('estimate-expand-btn');
+const quoteSection = document.getElementById('quote-form-section');
+const quoteClose = document.getElementById('quote-form-close');
+const estimateBarForm = document.getElementById('estimate-bar-form');
+
+if (expandBtn && quoteSection) {
+  expandBtn.addEventListener('click', () => {
+    quoteSection.classList.add('open');
+    // Pre-fill full form from inline bar values
+    const fullForm = document.getElementById('contact-form');
+    if (fullForm && estimateBarForm) {
+      const barData = Object.fromEntries(new FormData(estimateBarForm));
+      if (barData.fullname) {
+        const parts = barData.fullname.trim().split(/\s+/);
+        const firstInput = fullForm.querySelector('[name="firstName"]');
+        const lastInput = fullForm.querySelector('[name="lastName"]');
+        if (firstInput) firstInput.value = parts[0] || '';
+        if (lastInput) lastInput.value = parts.slice(1).join(' ') || '';
+      }
+      if (barData.phone) {
+        const phoneInput = fullForm.querySelector('[name="phone"]');
+        if (phoneInput) phoneInput.value = barData.phone;
+      }
+      if (barData.service) {
+        const serviceSelect = fullForm.querySelector('[name="service"]');
+        if (serviceSelect) serviceSelect.value = barData.service;
+      }
+    }
+    setTimeout(() => quoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  });
+}
+
+if (quoteClose && quoteSection) {
+  quoteClose.addEventListener('click', () => {
+    quoteSection.classList.remove('open');
+  });
+}
+
 // === Contact form ===
 const form = document.getElementById('contact-form');
 if (form) {
@@ -50,12 +89,13 @@ if (form) {
     btn.disabled = true;
 
     const data = Object.fromEntries(new FormData(form));
+    const hearAbout = [...form.querySelectorAll('[name="hearAbout"]:checked')].map(c => c.value).join(', ');
 
     try {
-      // For now, mailto fallback — replace with API endpoint later
+      const name = (data.firstName || '') + ' ' + (data.lastName || '');
       const subject = encodeURIComponent('Quote Request: ' + (data.vehicle || 'Vehicle'));
       const body = encodeURIComponent(
-        `Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone}\nVehicle: ${data.vehicle}\nService: ${data.service}\n\nMessage:\n${data.message}`
+        `Name: ${name.trim()}\nEmail: ${data.email}\nPhone: ${data.phone}\nVehicle: ${data.vehicle}\nYear: ${data.year || 'N/A'}\nService: ${data.service}\n\nAdditional Info:\n${data.message || 'N/A'}\n\nHow they heard of us: ${hearAbout || 'N/A'}`
       );
       window.location.href = `mailto:Contact@hausofwraps.com?subject=${subject}&body=${body}`;
       btn.textContent = 'Sent!';
