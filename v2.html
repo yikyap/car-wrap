@@ -1145,21 +1145,38 @@ function showColorInput(label, callback) {
 function showTrimPicker(callback) {
   const msg = document.createElement('div');
   msg.className = 'msg bot';
-  msg.innerHTML = '<div style="margin-bottom:8px">What color is the trim? (window surrounds, grille, mirror caps)</div>';
+  msg.innerHTML = '<div style="margin-bottom:10px">What color is the trim?</div><div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px;">Window surrounds, grille, mirror caps</div>';
 
-  const btns = document.createElement('div');
-  btns.className = 'confirm-btns';
-  btns.style.flexWrap = 'wrap';
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
 
   ['Chrome', 'Gloss Black', 'Body-colored', 'Dark Grey'].forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'confirm-btn yes';
+    btn.style.cssText = 'padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;';
     btn.textContent = opt;
-    btn.onclick = () => { btns.remove(); callback(opt.toLowerCase()); };
-    btns.appendChild(btn);
+    btn.onmouseenter = () => { btn.style.borderColor = 'rgba(212,168,50,0.6)'; btn.style.background = 'rgba(212,168,50,0.1)'; };
+    btn.onmouseleave = () => { btn.style.borderColor = 'rgba(255,255,255,0.12)'; btn.style.background = 'rgba(255,255,255,0.06)'; };
+    btn.onclick = () => { grid.remove(); otherRow.remove(); callback(opt.toLowerCase()); };
+    grid.appendChild(btn);
   });
 
-  msg.appendChild(btns);
+  const otherRow = document.createElement('div');
+  otherRow.style.cssText = 'margin-top:6px;';
+  const otherBtn = document.createElement('button');
+  otherBtn.style.cssText = 'width:100%;padding:10px 14px;background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.4);font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;';
+  otherBtn.textContent = 'Other...';
+  otherBtn.onmouseenter = () => { otherBtn.style.color = '#fff'; otherBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+  otherBtn.onmouseleave = () => { otherBtn.style.color = 'rgba(255,255,255,0.4)'; otherBtn.style.borderColor = 'rgba(255,255,255,0.08)'; };
+  otherBtn.onclick = () => {
+    grid.remove();
+    otherRow.remove();
+    // Show text input for custom trim
+    showColorInput('Type your trim color:', (val) => { callback(val); });
+  };
+  otherRow.appendChild(otherBtn);
+
+  msg.appendChild(grid);
+  msg.appendChild(otherRow);
   chatMessages.appendChild(msg);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
