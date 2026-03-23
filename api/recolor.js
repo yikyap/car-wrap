@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
     const photoRef = userPhoto ? { data: userPhoto.data, mimeType: userPhoto.mimeType } : null;
     const images = await generateAllImages(
       ai, BG_IMAGE,
-      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change ONLY the car's body panel paint to ${colorName} with a ${finish} finish. DO NOT change the trim, window surrounds, grille, mirror caps, bumper trim, door handles, or any other non-body-panel parts — they must stay EXACTLY the same color as described in the original car description. The wheels must also stay exactly the same. Only the painted body panels (doors, fenders, hood, trunk, roof, quarter panels) change color.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
       photoRef
     );
 
