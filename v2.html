@@ -738,11 +738,11 @@ function addPostGenerateConfirm(carDescription) {
   noBtn.onclick = () => {
     btns.remove();
     voteCacheEntry(lastCacheId, 'reject');
-    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite, the generated car doesn\'t look right.' }] });
     addMessage('Not quite', 'user');
-    addMessage('No worries — what needs to change? I can regenerate it.', 'bot');
-    chatHistory.push({ role: 'model', parts: [{ text: 'No worries — what needs to change? I can regenerate it.' }] });
-    unlockInput('Describe what needs to change...');
+    addMessage('No worries — let\'s try again with the correct details.', 'bot');
+    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite' }] });
+    chatHistory.push({ role: 'model', parts: [{ text: 'No worries — let\'s try again.' }] });
+    startDescribe();
   };
   btns.appendChild(yesBtn);
   btns.appendChild(noBtn);
