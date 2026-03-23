@@ -1025,33 +1025,36 @@ function startDescribe() {
   formMsg.innerHTML = '<div style="margin-bottom:8px">Let\'s start with the basics:</div>';
 
   const form = document.createElement('div');
-  form.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:4px;';
+  form.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-top:4px;';
 
-  const row1 = document.createElement('div');
-  row1.style.cssText = 'display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;';
+  const fieldStyle = 'width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;';
 
   const yearInput = document.createElement('input');
-  yearInput.type = 'text'; yearInput.placeholder = 'Year';
-  yearInput.style.cssText = 'padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:14px;font-family:inherit;outline:none;';
-  yearInput.maxLength = 4;
+  yearInput.type = 'text'; yearInput.placeholder = 'Year'; yearInput.maxLength = 4;
+  yearInput.style.cssText = fieldStyle;
+  yearInput.onfocus = () => yearInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  yearInput.onblur = () => yearInput.style.borderColor = 'rgba(255,255,255,0.12)';
 
   const makeInput = document.createElement('input');
-  makeInput.type = 'text'; makeInput.placeholder = 'Make (e.g. BMW)';
-  makeInput.style.cssText = yearInput.style.cssText;
+  makeInput.type = 'text'; makeInput.placeholder = 'Make (e.g. BMW, Tesla, Porsche)';
+  makeInput.style.cssText = fieldStyle;
+  makeInput.onfocus = () => makeInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  makeInput.onblur = () => makeInput.style.borderColor = 'rgba(255,255,255,0.12)';
 
   const modelInput = document.createElement('input');
-  modelInput.type = 'text'; modelInput.placeholder = 'Model (e.g. M4)';
-  modelInput.style.cssText = yearInput.style.cssText;
+  modelInput.type = 'text'; modelInput.placeholder = 'Model (e.g. M4, Model 3, 911)';
+  modelInput.style.cssText = fieldStyle;
+  modelInput.onfocus = () => modelInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  modelInput.onblur = () => modelInput.style.borderColor = 'rgba(255,255,255,0.12)';
 
-  row1.appendChild(yearInput);
-  row1.appendChild(makeInput);
-  row1.appendChild(modelInput);
-  form.appendChild(row1);
+  form.appendChild(yearInput);
+  form.appendChild(makeInput);
+  form.appendChild(modelInput);
 
   const nextBtn = document.createElement('button');
   nextBtn.className = 'confirm-btn yes';
   nextBtn.textContent = 'Next';
-  nextBtn.style.cssText = 'align-self:flex-end;margin-top:4px;';
+  nextBtn.style.cssText = 'width:100%;margin-top:2px;padding:12px;';
   nextBtn.onclick = () => {
     const year = yearInput.value.trim();
     const make = makeInput.value.trim();
@@ -1108,17 +1111,20 @@ function showColorInput(label, callback) {
   msg.className = 'msg bot';
   msg.innerHTML = '<div style="margin-bottom:8px">' + label + '</div>';
 
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:8px;';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
 
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = 'e.g. white, matte black, silver...';
-  input.style.cssText = 'flex:1;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:14px;font-family:inherit;outline:none;';
+  input.style.cssText = 'width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;';
+  input.onfocus = () => input.style.borderColor = 'rgba(212,168,50,0.6)';
+  input.onblur = () => input.style.borderColor = 'rgba(255,255,255,0.12)';
 
   const goBtn = document.createElement('button');
   goBtn.className = 'confirm-btn yes';
   goBtn.textContent = 'Next';
+  goBtn.style.cssText = 'width:100%;padding:12px;';
   goBtn.onclick = () => {
     const val = input.value.trim();
     if (!val) return;
@@ -1128,9 +1134,9 @@ function showColorInput(label, callback) {
   };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
 
-  row.appendChild(input);
-  row.appendChild(goBtn);
-  msg.appendChild(row);
+  wrap.appendChild(input);
+  wrap.appendChild(goBtn);
+  msg.appendChild(wrap);
   chatMessages.appendChild(msg);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   input.focus();
