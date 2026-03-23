@@ -120,6 +120,97 @@
   </div>
 </section>
 
+<!-- Get a Free Estimate Bar -->
+<section class="estimate-bar" id="contact">
+  <div class="container">
+    <h2 class="estimate-bar-title">GET A FREE ESTIMATE</h2>
+    <p class="estimate-bar-sub">We'll respond within minutes during business hours</p>
+    <form class="estimate-bar-form" id="estimate-bar-form">
+      <input type="text" name="fullname" class="estimate-field" placeholder="Full name" required>
+      <input type="tel" name="phone" class="estimate-field" placeholder="Phone number" required>
+      <select name="service" class="estimate-field estimate-select">
+        <option value="" disabled selected>Select service...</option>
+        <option>Color Change Wrap</option>
+        <option>Paint Protection Film (PPF)</option>
+        <option>Window Tint</option>
+        <option>Powder Coating</option>
+        <option>Body Kit</option>
+        <option>Multiple Services</option>
+      </select>
+      <button type="button" class="btn btn-outline estimate-btn" id="estimate-expand-btn">Request Free Estimate</button>
+    </form>
+  </div>
+</section>
+
+<!-- Full Quote Form (expandable) -->
+<section class="quote-form-section" id="quote-form-section">
+  <div class="container">
+    <div class="quote-form-inner">
+      <div class="quote-form-header">
+        <h2>REQUEST A QUOTE — HAUS OF WRAPS</h2>
+        <button type="button" class="quote-form-close" id="quote-form-close">&times;</button>
+      </div>
+      <form class="quote-form" id="contact-form">
+        <div class="quote-form-grid">
+          <div class="quote-field-group">
+            <label class="quote-label">First Name <span class="quote-req">(required)</span></label>
+            <input type="text" name="firstName" class="form-field" required>
+          </div>
+          <div class="quote-field-group">
+            <label class="quote-label">Last Name <span class="quote-req">(required)</span></label>
+            <input type="text" name="lastName" class="form-field" required>
+          </div>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Service Interested In</label>
+          <select name="service" class="form-field">
+            <option value="" disabled selected>Select an option</option>
+            <option>Color Change Wrap</option>
+            <option>Paint Protection Film (PPF)</option>
+            <option>Window Tint</option>
+            <option>Powder Coating</option>
+            <option>Body Kit</option>
+            <option>Custom Graphics</option>
+            <option>Multiple Services</option>
+          </select>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Vehicle Make/Model <span class="quote-req">(required)</span></label>
+          <input type="text" name="vehicle" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Year</label>
+          <input type="text" name="year" class="form-field">
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Email Address <span class="quote-req">(required)</span></label>
+          <input type="email" name="email" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Phone Number To Reach You At <span class="quote-req">(required)</span></label>
+          <input type="tel" name="phone" class="form-field" required>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">Add'l Info</label>
+          <textarea name="message" class="form-field"></textarea>
+        </div>
+        <div class="quote-field-group">
+          <label class="quote-label">How Did You Hear Of Us? <span class="quote-req">(required)</span></label>
+          <div class="quote-checkboxes">
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Google"> Google</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Yelp"> Yelp</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Instagram"> Instagram</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Facebook"> Facebook</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Referral"> Referral</label>
+            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Other"> Other</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-gold quote-submit">Submit Quote Request</button>
+      </form>
+    </div>
+  </div>
+</section>
+
 <!-- Collage -->
 <section class="collage">
   <div class="collage-grid">
@@ -285,97 +376,6 @@
           <div class="about-trust-label">Authorized</div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- Get a Free Estimate Bar -->
-<section class="estimate-bar" id="contact">
-  <div class="container">
-    <h2 class="estimate-bar-title">GET A FREE ESTIMATE</h2>
-    <p class="estimate-bar-sub">We'll respond within minutes during business hours</p>
-    <form class="estimate-bar-form" id="estimate-bar-form">
-      <input type="text" name="fullname" class="estimate-field" placeholder="Full name" required>
-      <input type="tel" name="phone" class="estimate-field" placeholder="Phone number" required>
-      <select name="service" class="estimate-field estimate-select">
-        <option value="" disabled selected>Select service...</option>
-        <option>Color Change Wrap</option>
-        <option>Paint Protection Film (PPF)</option>
-        <option>Window Tint</option>
-        <option>Powder Coating</option>
-        <option>Body Kit</option>
-        <option>Multiple Services</option>
-      </select>
-      <button type="button" class="btn btn-outline estimate-btn" id="estimate-expand-btn">Request Free Estimate</button>
-    </form>
-  </div>
-</section>
-
-<!-- Full Quote Form (expandable) -->
-<section class="quote-form-section" id="quote-form-section">
-  <div class="container">
-    <div class="quote-form-inner">
-      <div class="quote-form-header">
-        <h2>REQUEST A QUOTE — HAUS OF WRAPS</h2>
-        <button type="button" class="quote-form-close" id="quote-form-close">&times;</button>
-      </div>
-      <form class="quote-form" id="contact-form">
-        <div class="quote-form-grid">
-          <div class="quote-field-group">
-            <label class="quote-label">First Name <span class="quote-req">(required)</span></label>
-            <input type="text" name="firstName" class="form-field" required>
-          </div>
-          <div class="quote-field-group">
-            <label class="quote-label">Last Name <span class="quote-req">(required)</span></label>
-            <input type="text" name="lastName" class="form-field" required>
-          </div>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Service Interested In</label>
-          <select name="service" class="form-field">
-            <option value="" disabled selected>Select an option</option>
-            <option>Color Change Wrap</option>
-            <option>Paint Protection Film (PPF)</option>
-            <option>Window Tint</option>
-            <option>Powder Coating</option>
-            <option>Body Kit</option>
-            <option>Custom Graphics</option>
-            <option>Multiple Services</option>
-          </select>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Vehicle Make/Model <span class="quote-req">(required)</span></label>
-          <input type="text" name="vehicle" class="form-field" required>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Year</label>
-          <input type="text" name="year" class="form-field">
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Email Address <span class="quote-req">(required)</span></label>
-          <input type="email" name="email" class="form-field" required>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Phone Number To Reach You At <span class="quote-req">(required)</span></label>
-          <input type="tel" name="phone" class="form-field" required>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">Add'l Info</label>
-          <textarea name="message" class="form-field"></textarea>
-        </div>
-        <div class="quote-field-group">
-          <label class="quote-label">How Did You Hear Of Us? <span class="quote-req">(required)</span></label>
-          <div class="quote-checkboxes">
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Google"> Google</label>
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Yelp"> Yelp</label>
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Instagram"> Instagram</label>
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Facebook"> Facebook</label>
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Referral"> Referral</label>
-            <label class="quote-checkbox"><input type="checkbox" name="hearAbout" value="Other"> Other</label>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-gold quote-submit">Submit Quote Request</button>
-      </form>
     </div>
   </div>
 </section>
