@@ -1016,11 +1016,146 @@ function continueWithServices() {
 
 function startDescribe() {
   addMessage('I\'ll describe my car', 'user');
-  addMessage('What year, make, and model is your car? Include the color if you know it!', 'bot');
-  unlockInput('e.g. 2022 BMW 4 Series white...');
   chatHistory.push({ role: 'user', parts: [{ text: "I'll describe my car" }] });
-  chatHistory.push({ role: 'model', parts: [{ text: 'What year, make, and model is your car? Include the color if you know it!' }] });
-  chatInput.focus();
+  lockInput('Fill out the form above...');
+
+  // Step 1: Year / Make / Model form
+  const formMsg = document.createElement('div');
+  formMsg.className = 'msg bot';
+  formMsg.innerHTML = '<div style="margin-bottom:8px">Let\'s start with the basics:</div>';
+
+  const form = document.createElement('div');
+  form.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:4px;';
+
+  const row1 = document.createElement('div');
+  row1.style.cssText = 'display:grid;grid-template-columns:80px 1fr 1fr;gap:8px;';
+
+  const yearInput = document.createElement('input');
+  yearInput.type = 'text'; yearInput.placeholder = 'Year';
+  yearInput.style.cssText = 'padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:14px;font-family:inherit;outline:none;';
+  yearInput.maxLength = 4;
+
+  const makeInput = document.createElement('input');
+  makeInput.type = 'text'; makeInput.placeholder = 'Make (e.g. BMW)';
+  makeInput.style.cssText = yearInput.style.cssText;
+
+  const modelInput = document.createElement('input');
+  modelInput.type = 'text'; modelInput.placeholder = 'Model (e.g. M4)';
+  modelInput.style.cssText = yearInput.style.cssText;
+
+  row1.appendChild(yearInput);
+  row1.appendChild(makeInput);
+  row1.appendChild(modelInput);
+  form.appendChild(row1);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'confirm-btn yes';
+  nextBtn.textContent = 'Next';
+  nextBtn.style.cssText = 'align-self:flex-end;margin-top:4px;';
+  nextBtn.onclick = () => {
+    const year = yearInput.value.trim();
+    const make = makeInput.value.trim();
+    const model = modelInput.value.trim();
+    if (!year || !make || !model) return;
+
+    // Store structured data
+    carMetadata = { year, make, model, body_color: null, wheel_color: null };
+
+    // Disable form
+    yearInput.disabled = true; makeInput.disabled = true; modelInput.disabled = true;
+    nextBtn.remove();
+
+    addMessage(year + ' ' + make + ' ' + model, 'user');
+    chatHistory.push({ role: 'user', parts: [{ text: year + ' ' + make + ' ' + model }] });
+
+    // Step 2: Body color
+    showColorInput('What color is the body?', (color) => {
+      carMetadata.body_color = color;
+      addMessage(color, 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: color }] });
+
+      // Step 3: Rim color
+      showColorInput('What color are the rims?', (rimColor) => {
+        carMetadata.wheel_color = rimColor;
+        addMessage(rimColor, 'user');
+        chatHistory.push({ role: 'user', parts: [{ text: rimColor }] });
+
+        // Step 4: Trim color
+        showTrimPicker((trimColor) => {
+          const desc = `A ${year} ${make} ${model} in ${color} with ${rimColor} rims and ${trimColor} trim`;
+          carMetadata.body_color = color;
+
+          addMessage(trimColor + ' trim', 'user');
+          chatHistory.push({ role: 'user', parts: [{ text: trimColor + ' trim' }] });
+
+          // Confirm
+          const genTag = `${year}|${make}|${model}|${color}|${rimColor}|${desc}`;
+          chatHistory.push({ role: 'model', parts: [{ text: `Got it — ${desc}. Sound right? [GENERATE: ${genTag}]` }] });
+          addMessageWithConfirm(`Got it — ${desc}. Sound right?`, desc);
+        });
+      });
+    });
+  };
+  form.appendChild(nextBtn);
+  formMsg.appendChild(form);
+  chatMessages.appendChild(formMsg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  yearInput.focus();
+}
+
+function showColorInput(label, callback) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.innerHTML = '<div style="margin-bottom:8px">' + label + '</div>';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'e.g. white, matte black, silver...';
+  input.style.cssText = 'flex:1;padding:10px 12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:14px;font-family:inherit;outline:none;';
+
+  const goBtn = document.createElement('button');
+  goBtn.className = 'confirm-btn yes';
+  goBtn.textContent = 'Next';
+  goBtn.onclick = () => {
+    const val = input.value.trim();
+    if (!val) return;
+    input.disabled = true;
+    goBtn.remove();
+    callback(val);
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
+
+  row.appendChild(input);
+  row.appendChild(goBtn);
+  msg.appendChild(row);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  input.focus();
+}
+
+function showTrimPicker(callback) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.innerHTML = '<div style="margin-bottom:8px">What color is the trim? (window surrounds, grille, mirror caps)</div>';
+
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  btns.style.flexWrap = 'wrap';
+
+  ['Chrome', 'Gloss Black', 'Body-colored', 'Dark Grey'].forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'confirm-btn yes';
+    btn.textContent = opt;
+    btn.onclick = () => { btns.remove(); callback(opt.toLowerCase()); };
+    btns.appendChild(btn);
+  });
+
+  msg.appendChild(btns);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function startUpload() {
