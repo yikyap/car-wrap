@@ -1237,6 +1237,7 @@ async function applyTint(pct) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
   const tintDesc = customCarDescription + '. Apply ' + pct + ' window tint to all side and rear windows.';
+  if (carMetadata) carMetadata.tint_level = pct;
   try {
     await recolorWithDescription(tintDesc, st.color.name, st.finish.name);
     msg.textContent = pct + ' tint applied! Does this look right?';
@@ -1340,6 +1341,7 @@ async function applyPowderCoat(colorName) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 
   const powderDesc = customCarDescription + '. The wheels are now ' + colorName + ' powder coated.';
+  if (carMetadata) carMetadata.wheel_color = colorName;
   try {
     await recolorWithDescription(powderDesc, st.color.name, st.finish.name);
     msg.textContent = colorName + ' wheels applied! Does this look right?';
