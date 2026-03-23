@@ -191,7 +191,31 @@ select.form-field option { background: var(--navy); }
 .quote-checkbox input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
 .quote-submit { width: 100%; justify-content: center; margin-top: 0.5rem; }
 
+/* === Trust / Reviews === */
+.trust-section { padding: 3.5rem 0; background: var(--off-white); color: var(--black); }
+.trust-grid { display: grid; grid-template-columns: 1fr auto 1.4fr; gap: 3rem; align-items: start; }
+.trust-heading { font-size: clamp(18px, 3vw, 24px); font-weight: 700; letter-spacing: 1px; margin-bottom: 1.5rem; color: var(--black); }
+.trust-list { display: flex; flex-direction: column; gap: 1rem; }
+.trust-list li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--gray-700); }
+.trust-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+.trust-rating { text-align: center; padding: 0 1.5rem; border-left: 1px solid var(--gray-100); border-right: 1px solid var(--gray-100); align-self: center; }
+.trust-score { font-size: 42px; font-weight: 700; color: var(--black); line-height: 1.2; }
+.trust-stars { color: #F4B400; font-size: 28px; margin-left: 4px; }
+.trust-powered { font-size: 12px; color: var(--gray-600); margin-top: 0.5rem; }
+.trust-source { font-size: 22px; font-weight: 700; color: var(--black); margin-top: 2px; }
+.trust-count { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+.trust-reviews { display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.trust-review-card { min-width: 260px; max-width: 280px; background: var(--white); border: 1px solid var(--gray-100); border-radius: 10px; padding: 1.25rem; scroll-snap-align: start; flex-shrink: 0; }
+.trust-review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.trust-review-name { font-size: 15px; font-weight: 600; color: var(--gold-dark); }
+.trust-review-stars { color: #F4B400; font-size: 14px; letter-spacing: 1px; }
+.trust-review-date { font-size: 12px; color: var(--gray-600); margin-bottom: 0.75rem; }
+.trust-review-card p { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
+
 @media (max-width: 900px) {
+  .trust-grid { grid-template-columns: 1fr; }
+  .trust-rating { border: none; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: center; }
+  .trust-reviews { gap: 0.75rem; }
   .estimate-bar-form { flex-direction: column; align-items: stretch; max-width: 400px; margin: 0 auto; }
   .estimate-field { min-width: 0; }
 }
