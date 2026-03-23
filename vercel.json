@@ -15,6 +15,16 @@
       "memory": 1024,
       "includeFiles": "images/showroom-bg.png"
     },
+    "api/generate-hero.js": {
+      "maxDuration": 120,
+      "memory": 1024,
+      "includeFiles": "images/showroom-bg.png"
+    },
+    "api/generate-remaining.js": {
+      "maxDuration": 120,
+      "memory": 1024,
+      "includeFiles": "images/showroom-bg.png"
+    },
     "api/cache-lookup.js": {
       "maxDuration": 10
     },

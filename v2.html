@@ -23,10 +23,13 @@ h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
 .dot.active { background: #fff; transform: scale(1.2); }
 .badge { position: absolute; bottom: 12px; left: 14px; background: rgba(0,0,0,0.7); border-radius: 6px; padding: 5px 11px; font-size: 11px; color: #ccc; z-index: 10; backdrop-filter: blur(4px); }
 .carousel-logo { position: absolute; bottom: 12px; right: 14px; width: 140px; height: auto; z-index: 10; opacity: 0.7; pointer-events: none; }
-.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 12px; backdrop-filter: blur(4px); }
+.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 16px; backdrop-filter: blur(6px); }
 .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: #999; }
+.loading-text { font-size: 13px; color: #999; text-align: center; line-height: 1.5; }
+.loading-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.08); z-index: 25; }
+.loading-progress-bar { height: 100%; background: linear-gradient(90deg, #D4A832, #E0BE55); width: 0%; transition: width 0.6s ease; border-radius: 0 2px 2px 0; }
+.loading-step { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; }
 
 /* Chat panel */
 .chat-panel { display: flex; flex-direction: column; background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 14px; height: 100%; max-height: calc(100vh - 6rem); overflow: hidden; }
@@ -389,9 +392,27 @@ function parseError(text, fallback) { try { return JSON.parse(text).error || fal
 
 function showLoading(msg) {
   let ov = document.getElementById('loading-overlay');
-  if (!ov) { ov = document.createElement('div'); ov.id = 'loading-overlay'; ov.className = 'loading-overlay'; ov.innerHTML = '<div class="spinner"></div><div class="loading-text" id="loading-text"></div>'; carouselEl.appendChild(ov); }
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'loading-overlay'; ov.className = 'loading-overlay';
+    ov.innerHTML = '<div class="loading-progress"><div class="loading-progress-bar" id="loading-bar"></div></div><div class="spinner"></div><div class="loading-text" id="loading-text"></div><div class="loading-step" id="loading-step"></div>';
+    carouselEl.appendChild(ov);
+  }
   ov.style.display = 'flex';
   document.getElementById('loading-text').textContent = msg || 'Generating...';
+  document.getElementById('loading-step').textContent = '';
+  setLoadingProgress(0);
+}
+function setLoadingProgress(pct, stepText) {
+  const bar = document.getElementById('loading-bar');
+  if (bar) bar.style.width = pct + '%';
+  if (stepText) {
+    const step = document.getElementById('loading-step');
+    if (step) step.textContent = stepText;
+  }
+}
+function updateLoadingText(msg) {
+  const el = document.getElementById('loading-text');
+  if (el) el.textContent = msg;
 }
 function hideLoading() { const ov = document.getElementById('loading-overlay'); if (ov) ov.style.display = 'none'; }
 
@@ -470,36 +491,64 @@ async function generateFromDescription(carDesc) {
     } catch (e) { console.log('Cache lookup failed, falling back to generation:', e); }
   }
 
-  showLoading('Generating your car in the showroom...');
+  showLoading('Setting up the studio...');
+  setLoadingProgress(5, 'Step 1 of 3');
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 300000);
-    const reqBody = { carDescription: carDesc };
-    if (carMetadata) reqBody.cacheMetadata = carMetadata;
-    const resp = await fetch('/api/generate-from-description', {
+    // Step 1: Generate hero image
+    const heroResp = await fetch('/api/generate-hero', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reqBody),
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeout));
-    console.log('generate-from-description response status:', resp.status);
-    const text = await resp.text();
-    if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
-    const parsed = JSON.parse(text);
-    lastCacheId = parsed.cacheId || null;
-    await displayGeneratedImages(parsed.images);
+      body: JSON.stringify({ carDescription: carDesc }),
+    });
+    const heroText = await heroResp.text();
+    if (!heroResp.ok) throw new Error(parseError(heroText, 'Hero generation failed'));
+    const heroData = JSON.parse(heroText);
+
+    // Show hero immediately
+    setLoadingProgress(40, 'Step 1 of 3 — complete');
+    updateLoadingText('Here\'s your front view!');
+    await displayGeneratedImages([heroData.image]);
     customCarDescription = carDesc;
     baseCarDescription = carDesc;
     Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
     const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
     document.getElementById('badge').textContent = shortDesc;
+
+    // Step 2: Generate remaining angles in background
+    setLoadingProgress(50, 'Step 2 of 3 — generating side view');
+    updateLoadingText('Generating remaining angles...');
+
+    const remainResp = await fetch('/api/generate-remaining', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carDescription: carDesc,
+        heroImage: heroData.image.data,
+        cacheMetadata: carMetadata || undefined,
+      }),
+    });
+    const remainText = await remainResp.text();
+    if (!remainResp.ok) {
+      console.error('Remaining angles failed, keeping hero only');
+      hideLoading();
+      return;
+    }
+    const remainData = JSON.parse(remainText);
+    lastCacheId = remainData.cacheId || null;
+
+    setLoadingProgress(100, 'Step 3 of 3 — done!');
+    updateLoadingText('All views ready!');
+
+    // Display all 3 images
+    await displayGeneratedImages([heroData.image, ...remainData.images]);
+    await new Promise(r => setTimeout(r, 400)); // Brief pause to show 100%
+    hideLoading();
   } catch (err) {
     console.error('generateFromDescription error:', err);
+    hideLoading();
     if (err.name === 'AbortError') throw new Error('Generation timed out — please try again');
     if (err.message === 'Load failed') throw new Error('Connection lost — please try again');
     throw err;
-  } finally {
-    hideLoading();
   }
 }
 
@@ -530,20 +579,32 @@ async function recolorCustomCar(color) {
     } catch (e) { console.log('Recolor cache lookup failed:', e); }
   }
 
-  showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
+  showLoading('Applying ' + color.name + ' ' + st.finish.name + '...');
+  setLoadingProgress(10, 'Painting body panels');
+  // Animate progress while waiting
+  const progressInterval = setInterval(() => {
+    const bar = document.getElementById('loading-bar');
+    if (bar) {
+      const curr = parseFloat(bar.style.width) || 10;
+      if (curr < 85) bar.style.width = (curr + 2) + '%';
+    }
+  }, 1000);
   try {
     const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
     if (uploadedPhoto) body.userPhoto = { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType };
     if (carMetadata) body.cacheMetadata = carMetadata;
     const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    clearInterval(progressInterval);
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Recolor failed'));
     const parsed = JSON.parse(text);
     lastCacheId = parsed.cacheId || null;
     recolorCache[cacheKey] = parsed.images;
+    setLoadingProgress(100, 'Done!');
     await displayGeneratedImages(parsed.images);
     updateBadge();
-  } finally { hideLoading(); }
+    await new Promise(r => setTimeout(r, 300));
+  } finally { clearInterval(progressInterval); hideLoading(); }
 }
 
 // === Chat ===

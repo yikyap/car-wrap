@@ -92,30 +92,35 @@ CRITICAL: The car color and all details must EXACTLY match the hero reference im
 async function generateAllImages(carDescription, userPhoto) {
   loadBgImage();
   const client = getClient();
+  const heroB64 = await generateHeroOnly(carDescription, userPhoto);
+  const remaining = await generateRemainingAngles(carDescription, heroB64, userPhoto);
+  return [
+    { data: heroB64, mimeType: "image/png" },
+    ...remaining,
+  ];
+}
 
-  // Step 1: Generate hero image
-  console.log("Generating hero image (angle " + HERO_INDEX + ") with GPT-Image-1.5...");
+async function generateHeroOnly(carDescription, userPhoto) {
+  loadBgImage();
+  const client = getClient();
+  console.log("Generating hero image with GPT-Image-1.5...");
   const heroB64 = await generateHeroImage(client, carDescription, BG_IMAGE_B64, userPhoto);
   console.log("Hero image generated.");
+  return heroB64;
+}
 
-  // Step 2: Generate remaining 2 angles in parallel
+async function generateRemainingAngles(carDescription, heroB64, userPhoto) {
+  loadBgImage();
+  const client = getClient();
   console.log("Generating remaining 2 angles...");
   const remainingIndices = [1, 2];
-  const remainingResults = await Promise.all(
+  const results = await Promise.all(
     remainingIndices.map((i) =>
       generateAngleFromHero(client, heroB64, BG_IMAGE_B64, carDescription, i, userPhoto)
     )
   );
-  console.log("All 3 angles generated.");
-
-  // Assemble all 3 images
-  const allImages = [
-    { data: heroB64, mimeType: "image/png" },
-    { data: remainingResults[0], mimeType: "image/png" },
-    { data: remainingResults[1], mimeType: "image/png" },
-  ];
-
-  return allImages;
+  console.log("Remaining angles generated.");
+  return results.map(b64 => ({ data: b64, mimeType: "image/png" }));
 }
 
 // Helper: convert base64 to an OpenAI-compatible File object
@@ -124,4 +129,4 @@ async function b64ToFile(base64Data, filename, mimeType) {
   return await toFile(buffer, filename, { type: mimeType });
 }
 
-module.exports = { generateAllImages, ANGLE_PROMPTS };
+module.exports = { generateAllImages, generateHeroOnly, generateRemainingAngles, ANGLE_PROMPTS };
