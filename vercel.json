@@ -17,6 +17,13 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/visualizer", "destination": "/v2.html" },
-    { "source": "/v2", "destination": "/v2.html" }
+    { "source": "/v2", "destination": "/v2.html" },
+    { "source": "/gallery", "destination": "/gallery.html" },
+    { "source": "/tesla", "destination": "/tesla.html" },
+    { "source": "/ppf", "destination": "/ppf.html" },
+    { "source": "/services", "destination": "/services.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/blog", "destination": "/blog.html" }
   ]
 }

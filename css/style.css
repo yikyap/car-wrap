@@ -136,6 +136,11 @@ select.form-field option { background: var(--navy); }
 .social-link { width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--gray-400); }
 .social-link:hover { background: var(--gold); color: var(--black); }
 
+/* === Page Banner === */
+.page-banner { padding: 8rem 0 3rem; background: var(--navy); text-align: center; }
+.page-banner h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; }
+.page-banner p { color: var(--gray-400); margin-top: 0.75rem; font-size: 16px; }
+
 /* === Footer === */
 .footer { padding: 2rem 0; border-top: 1px solid rgba(255,255,255,0.06); text-align: center; }
 .footer p { font-size: 13px; color: var(--gray-600); }
