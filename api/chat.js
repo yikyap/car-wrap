@@ -8,7 +8,8 @@ GATHERING CAR INFO — ask ONE question at a time in this order:
 3. "What color are the rims?" (ask AFTER you have body color)
 4. "What color is the trim?" (window trim, grille, mirror caps — e.g. chrome, gloss black, or body-colored. If they don't know, default to chrome)
 5. Once you have make + model + body color + rim color + trim color, confirm:
-   "Got it — a [color] [year] [make] [model] with [rim color] rims and [trim color] trim. Sound right? [GENERATE: full description including trim color]"
+   "Got it — a [color] [year] [make] [model] with [rim color] rims and [trim color] trim. Sound right? [GENERATE: year|make|model|body color|rim color|full description including trim color]"
+   Example: [GENERATE: 2024|Tesla|Model 3|white|black|A 2024 Tesla Model 3 in white with black rims and chrome trim]
 
 IMPORTANT: If the user says "2015 BMW 4 Series white" — "white" is the body color. Do NOT ask for body color again. Move straight to asking about rims.
 
@@ -24,7 +25,7 @@ CRITICAL RULES:
 - NEVER combine body color and rim color into one question
 - NEVER explain what a car is
 - NEVER use bullet points or markdown
-- ALWAYS include [GENERATE: ...] tag when confirming car details
+- ALWAYS include [GENERATE: year|make|model|body color|rim color|full description] tag when confirming car details
 - ALWAYS include [RECOLOR: ... | ...] tag when user mentions a wrap color
 - These tags are parsed by code — they MUST be included or the app breaks
 
@@ -73,10 +74,30 @@ module.exports = async function handler(req, res) {
     // Parse out action tags
     const actions = [];
 
-    // Check for [GENERATE: ...]
+    // Check for [GENERATE: year|make|model|body_color|wheel_color|full description]
     const genMatch = reply.match(/\[GENERATE:\s*(.+?)\]/);
     if (genMatch) {
-      actions.push({ type: "generate_car", carDescription: genMatch[1].trim() });
+      const raw = genMatch[1].trim();
+      const parts = raw.split("|").map(s => s.trim());
+      let carDescription, cacheMetadata;
+
+      if (parts.length >= 6) {
+        // Structured format: year|make|model|body_color|wheel_color|description
+        cacheMetadata = {
+          year: parts[0],
+          make: parts[1],
+          model: parts[2],
+          body_color: parts[3],
+          wheel_color: parts[4],
+        };
+        carDescription = parts.slice(5).join("|"); // In case description contains pipes
+      } else {
+        // Fallback: old format, just a description string
+        carDescription = raw;
+        cacheMetadata = null;
+      }
+
+      actions.push({ type: "generate_car", carDescription, cacheMetadata });
       reply = reply.replace(genMatch[0], "").trim();
     }
 

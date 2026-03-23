@@ -1,6 +1,7 @@
 {
   "private": true,
   "dependencies": {
-    "@google/genai": "^1.0.0"
+    "@google/genai": "^1.0.0",
+    "@supabase/supabase-js": "^2.100.0"
   }
 }

@@ -12,6 +12,9 @@
     "api/generate-from-description.js": {
       "maxDuration": 60,
       "includeFiles": "images/showroom-bg.webp"
+    },
+    "api/cache-lookup.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

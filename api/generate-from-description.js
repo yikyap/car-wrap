@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const { generateAllImages } = require("./_generate-images");
+const { saveToCache } = require("./_supabase");
 const fs = require("fs");
 const path = require("path");
 
@@ -23,7 +24,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Failed to load background image: " + err.message });
   }
 
-  const { carDescription } = req.body;
+  const { carDescription, cacheMetadata } = req.body;
   if (!carDescription) {
     return res.status(400).json({ error: "Missing carDescription" });
   }
@@ -40,6 +41,11 @@ module.exports = async function handler(req, res) {
       ai, BG_IMAGE,
       `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, year, color, wheels, trim, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
     );
+
+    // Save to cache (non-blocking)
+    if (cacheMetadata) {
+      saveToCache(cacheMetadata, images, carDescription).catch(() => {});
+    }
 
     res.status(200).json({ images, carDescription });
   } catch (err) {

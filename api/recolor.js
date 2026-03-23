@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const { generateAllImages } = require("./_generate-images");
+const { saveToCache } = require("./_supabase");
 const fs = require("fs");
 const path = require("path");
 
@@ -23,7 +24,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Failed to load background image: " + err.message });
   }
 
-  const { carDescription, colorName, finishName, userPhoto } = req.body;
+  const { carDescription, colorName, finishName, userPhoto, cacheMetadata } = req.body;
   if (!carDescription || !colorName) {
     return res.status(400).json({ error: "Missing carDescription or colorName" });
   }
@@ -43,6 +44,12 @@ module.exports = async function handler(req, res) {
       `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nIMPORTANT: Change the car's body color to ${colorName} with a ${finish} finish. Keep everything else identical — same make, model, wheels, body shape, and all other details. Only the body paint color and finish should change.\n\nDark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
       photoRef
     );
+
+    // Save to cache (non-blocking)
+    if (cacheMetadata) {
+      const meta = { ...cacheMetadata, body_color: colorName + (finishName ? ` ${finishName}` : "") };
+      saveToCache(meta, images, carDescription).catch(() => {});
+    }
 
     res.status(200).json({ images });
   } catch (err) {

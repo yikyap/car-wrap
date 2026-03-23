@@ -207,6 +207,7 @@ const baseSlideData = [];
 let activeSlideCount = BASE_IMAGES.length;
 let usingRealPhotos = false;
 let customCarDescription = null;
+let carMetadata = null; // {year, make, model, body_color, wheel_color} for cache
 const recolorCache = {};
 let chatHistory = [];
 let pendingFile = null;
@@ -386,8 +387,10 @@ function hideLoading() { const ov = document.getElementById('loading-overlay'); 
 
 function displayGeneratedImages(images) {
   return Promise.all(images.map(img => new Promise(resolve => {
-    const el = new Image(); el.onload = () => resolve(el);
-    el.src = `data:${img.mimeType};base64,${img.data}`;
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => resolve(el);
+    el.src = img.url ? img.url : `data:${img.mimeType};base64,${img.data}`;
   }))).then(imgElements => {
     const { slides } = createSlides(imgElements.length);
     imgElements.forEach((img, i) => {
@@ -431,14 +434,41 @@ async function generateViews() {
 async function generateFromDescription(carDesc) {
   console.log('generateFromDescription called with:', carDesc);
   showMobileCarousel();
+
+  // Check cache first
+  if (carMetadata) {
+    try {
+      showLoading('Loading...');
+      const cacheResp = await fetch('/api/cache-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(carMetadata),
+      });
+      const cacheData = await cacheResp.json();
+      if (cacheData.hit) {
+        console.log('Cache hit for', carMetadata);
+        await displayGeneratedImages(cacheData.images);
+        customCarDescription = carDesc;
+        baseCarDescription = carDesc;
+        Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+        const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
+        document.getElementById('badge').textContent = shortDesc;
+        hideLoading();
+        return;
+      }
+    } catch (e) { console.log('Cache lookup failed, falling back to generation:', e); }
+  }
+
   showLoading('Generating your car in the showroom...');
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    const reqBody = { carDescription: carDesc };
+    if (carMetadata) reqBody.cacheMetadata = carMetadata;
     const resp = await fetch('/api/generate-from-description', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carDescription: carDesc }),
+      body: JSON.stringify(reqBody),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
     console.log('generate-from-description response status:', resp.status);
@@ -464,10 +494,34 @@ async function generateFromDescription(carDesc) {
 async function recolorCustomCar(color) {
   const cacheKey = color.name + '|' + st.finish.name;
   if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
+
+  // Check server cache
+  if (carMetadata) {
+    try {
+      showLoading('Loading...');
+      const cacheMeta = { ...carMetadata, body_color: color.name + ' ' + st.finish.name };
+      const cacheResp = await fetch('/api/cache-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cacheMeta),
+      });
+      const cacheData = await cacheResp.json();
+      if (cacheData.hit) {
+        console.log('Cache hit for recolor:', cacheMeta);
+        recolorCache[cacheKey] = cacheData.images;
+        await displayGeneratedImages(cacheData.images);
+        updateBadge();
+        hideLoading();
+        return;
+      }
+    } catch (e) { console.log('Recolor cache lookup failed:', e); }
+  }
+
   showLoading('Generating ' + color.name + ' ' + st.finish.name + '...');
   try {
     const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
     if (uploadedPhoto) body.userPhoto = { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType };
+    if (carMetadata) body.cacheMetadata = carMetadata;
     const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Recolor failed'));
@@ -882,6 +936,7 @@ async function sendMessage() {
       const recolorAction = (data.actions || []).find(a => a.type === 'recolor_car');
 
       if (genAction) {
+        if (genAction.cacheMetadata) carMetadata = genAction.cacheMetadata;
         addMessageWithConfirm(data.reply, genAction.carDescription);
       } else if (recolorAction) {
         addRecolorConfirm(data.reply, recolorAction.colorName, recolorAction.finishName);
@@ -1157,7 +1212,7 @@ async function recolorWithDescription(desc, colorName, finishName) {
     const resp = await fetch('/api/recolor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carDescription: desc, colorName, finishName, userPhoto: uploadedPhoto ? { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType } : undefined }),
+      body: JSON.stringify({ carDescription: desc, colorName, finishName, userPhoto: uploadedPhoto ? { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType } : undefined, cacheMetadata: carMetadata || undefined }),
     });
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Failed'));
