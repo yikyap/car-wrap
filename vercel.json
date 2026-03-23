@@ -1,16 +1,18 @@
 {
   "functions": {
     "api/generate.js": {
-      "maxDuration": 60,
+      "maxDuration": 300,
+      "memory": 1024,
       "includeFiles": "images/showroom-bg.png"
     },
     "api/recolor.js": {
-      "maxDuration": 60,
-      "includeFiles": "images/showroom-bg.png",
-      "memory": 1024
+      "maxDuration": 300,
+      "memory": 1024,
+      "includeFiles": "images/showroom-bg.png"
     },
     "api/generate-from-description.js": {
-      "maxDuration": 60,
+      "maxDuration": 300,
+      "memory": 1024,
       "includeFiles": "images/showroom-bg.png"
     },
     "api/cache-lookup.js": {

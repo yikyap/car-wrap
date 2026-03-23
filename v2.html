@@ -426,7 +426,7 @@ async function generateViews() {
   showLoading('Analyzing your car and generating showroom views...');
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+    const timeout = setTimeout(() => controller.abort(), 300000);
     const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }), signal: controller.signal }).finally(() => clearTimeout(timeout));
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
@@ -473,7 +473,7 @@ async function generateFromDescription(carDesc) {
   showLoading('Generating your car in the showroom...');
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+    const timeout = setTimeout(() => controller.abort(), 300000);
     const reqBody = { carDescription: carDesc };
     if (carMetadata) reqBody.cacheMetadata = carMetadata;
     const resp = await fetch('/api/generate-from-description', {

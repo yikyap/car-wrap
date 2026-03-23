@@ -1,4 +1,5 @@
 const OpenAI = require("openai");
+const { toFile } = require("openai");
 const fs = require("fs");
 const path = require("path");
 
@@ -41,11 +42,11 @@ Camera angle: ${ANGLE_PROMPTS[HERO_INDEX]}.`;
   const images = [];
 
   // Background reference
-  images.push(toFile(bgBase64, "showroom-bg.png", "image/png"));
+  images.push(await b64ToFile(bgBase64, "showroom-bg.png", "image/png"));
 
   // User photo reference if available
   if (userPhotoBase64) {
-    images.push(toFile(userPhotoBase64.data, "user-car.jpg", userPhotoBase64.mimeType || "image/jpeg"));
+    images.push(await b64ToFile(userPhotoBase64.data, "user-car.jpg", userPhotoBase64.mimeType || "image/jpeg"));
   }
 
   const result = await client.images.edit({
@@ -73,11 +74,11 @@ Camera angle for this image: ${ANGLE_PROMPTS[angleIndex]}.
 CRITICAL: The car color and all details must EXACTLY match the hero reference image.`;
 
   const images = [];
-  images.push(toFile(heroBase64, "hero.png", "image/png"));
-  images.push(toFile(bgBase64, "showroom-bg.png", "image/png"));
+  images.push(await b64ToFile(heroBase64, "hero.png", "image/png"));
+  images.push(await b64ToFile(bgBase64, "showroom-bg.png", "image/png"));
 
   if (userPhotoBase64) {
-    images.push(toFile(userPhotoBase64.data, "user-car.jpg", userPhotoBase64.mimeType || "image/jpeg"));
+    images.push(await b64ToFile(userPhotoBase64.data, "user-car.jpg", userPhotoBase64.mimeType || "image/jpeg"));
   }
 
   const result = await client.images.edit({
@@ -121,11 +122,10 @@ async function generateAllImages(carDescription, userPhoto) {
   return allImages;
 }
 
-// Helper: convert base64 to a File-like object for the OpenAI SDK
-function toFile(base64Data, filename, mimeType) {
+// Helper: convert base64 to an OpenAI-compatible File object
+async function b64ToFile(base64Data, filename, mimeType) {
   const buffer = Buffer.from(base64Data, "base64");
-  const blob = new Blob([buffer], { type: mimeType });
-  return new File([blob], filename, { type: mimeType });
+  return await toFile(buffer, filename, { type: mimeType });
 }
 
 module.exports = { generateAllImages, ANGLE_PROMPTS };
