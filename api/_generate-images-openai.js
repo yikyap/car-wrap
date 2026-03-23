@@ -4,15 +4,12 @@ const fs = require("fs");
 const path = require("path");
 
 const ANGLE_PROMPTS = [
-  "front view, straight on, headlights visible, low angle",
-  "passenger side profile, full side view facing right",
-  "rear view, straight on, taillights visible",
-  "driver side profile, full side view facing left",
   "front three-quarter view, looking at hood and driver side",
+  "passenger side profile, full side view facing right",
   "rear three-quarter view, looking at trunk and passenger side",
 ];
 
-const HERO_INDEX = 4;
+const HERO_INDEX = 0;
 
 let BG_IMAGE_B64 = null;
 function loadBgImage() {
@@ -101,23 +98,22 @@ async function generateAllImages(carDescription, userPhoto) {
   const heroB64 = await generateHeroImage(client, carDescription, BG_IMAGE_B64, userPhoto);
   console.log("Hero image generated.");
 
-  // Step 2: Generate remaining 5 angles in parallel
-  console.log("Generating remaining 5 angles...");
-  const remainingIndices = [0, 1, 2, 3, 5];
+  // Step 2: Generate remaining 2 angles in parallel
+  console.log("Generating remaining 2 angles...");
+  const remainingIndices = [1, 2];
   const remainingResults = await Promise.all(
     remainingIndices.map((i) =>
       generateAngleFromHero(client, heroB64, BG_IMAGE_B64, carDescription, i, userPhoto)
     )
   );
-  console.log("All 6 angles generated.");
+  console.log("All 3 angles generated.");
 
-  // Assemble all 6 images
-  const allImages = new Array(6);
-  allImages[HERO_INDEX] = { data: heroB64, mimeType: "image/png" };
-
-  remainingIndices.forEach((origIdx, resultIdx) => {
-    allImages[origIdx] = { data: remainingResults[resultIdx], mimeType: "image/png" };
-  });
+  // Assemble all 3 images
+  const allImages = [
+    { data: heroB64, mimeType: "image/png" },
+    { data: remainingResults[0], mimeType: "image/png" },
+    { data: remainingResults[1], mimeType: "image/png" },
+  ];
 
   return allImages;
 }
