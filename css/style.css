@@ -192,7 +192,7 @@ select.form-field option { background: var(--navy); }
 .quote-submit { width: 100%; justify-content: center; margin-top: 0.5rem; }
 
 /* === Trust / Reviews === */
-.trust-section { padding: 2.5rem 0; background: var(--off-white); color: var(--black); }
+.trust-section { padding: 2.5rem 0 0; background: var(--off-white); color: var(--black); }
 .trust-grid { display: grid; grid-template-columns: auto auto 1fr; gap: 2.5rem; align-items: center; }
 .trust-heading { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 1.25rem; color: var(--black); line-height: 1.4; }
 .trust-list { display: flex; flex-direction: column; gap: 0.6rem; }
