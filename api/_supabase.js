@@ -20,7 +20,7 @@ async function lookupCache({ year, make, model, body_color, wheel_color, tint_le
   const sb = getClient();
   let query = sb
     .from("visualizer_cache")
-    .select("id, images")
+    .select("id, images, confirmed, rejected")
     .eq("year", normalize(year))
     .eq("make", normalize(make))
     .eq("model", normalize(model))
@@ -38,13 +38,50 @@ async function lookupCache({ year, make, model, body_color, wheel_color, tint_le
     query = query.is("tint_level", null);
   }
 
-  const { data, error } = await query.limit(1).single();
-  if (error || !data) return null;
+  // Filter out entries that have been rejected 3+ times with 0 confirmations
+  // Order by best ratio: confirmed desc, rejected asc
+  const { data, error } = await query
+    .order("confirmed", { ascending: false })
+    .order("rejected", { ascending: true })
+    .limit(5);
+
+  if (error || !data || data.length === 0) return null;
+
+  // Filter out bad entries (3+ rejections, 0 confirmations)
+  const good = data.filter(d => !(d.rejected >= 3 && d.confirmed === 0));
+  if (good.length === 0) return null;
+
+  // Pick the best one (highest confirmed, lowest rejected)
+  const pick = good[0];
 
   // Increment hit_count (fire-and-forget)
-  sb.from("visualizer_cache").update({ hit_count: data.hit_count + 1 }).eq("id", data.id).then(() => {});
+  sb.from("visualizer_cache").update({ hit_count: (pick.hit_count || 0) + 1 }).eq("id", pick.id).then(() => {});
 
-  return data.images;
+  return { images: pick.images, cacheId: pick.id };
+}
+
+async function confirmCache(id) {
+  try {
+    const sb = getClient();
+    const { data } = await sb.from("visualizer_cache").select("confirmed").eq("id", id).single();
+    if (data) {
+      await sb.from("visualizer_cache").update({ confirmed: (data.confirmed || 0) + 1 }).eq("id", id);
+    }
+  } catch (err) {
+    console.error("confirmCache error:", err);
+  }
+}
+
+async function rejectCache(id) {
+  try {
+    const sb = getClient();
+    const { data } = await sb.from("visualizer_cache").select("rejected").eq("id", id).single();
+    if (data) {
+      await sb.from("visualizer_cache").update({ rejected: (data.rejected || 0) + 1 }).eq("id", id);
+    }
+  } catch (err) {
+    console.error("rejectCache error:", err);
+  }
 }
 
 async function saveToCache(metadata, base64Images, carDescription) {
@@ -68,7 +105,7 @@ async function saveToCache(metadata, base64Images, carDescription) {
 
       if (uploadErr) {
         console.error("Storage upload error:", uploadErr);
-        return; // Don't save partial entries
+        return null;
       }
 
       const { data: urlData } = sb.storage.from(bucket).getPublicUrl(filePath);
@@ -86,17 +123,18 @@ async function saveToCache(metadata, base64Images, carDescription) {
       tint_level: normalize(metadata.tint_level),
       images: imageUrls,
       car_description: carDescription || null,
-    }).single();
+    });
 
     if (insertErr) {
-      // Unique constraint violation = another request already saved this combo, that's fine
-      if (insertErr.code === "23505") return;
       console.error("Cache insert error:", insertErr);
+      return null;
     }
+
+    return id;
   } catch (err) {
     console.error("saveToCache error:", err);
-    // Never let cache errors break the user flow
+    return null;
   }
 }
 
-module.exports = { getClient, normalize, lookupCache, saveToCache };
+module.exports = { getClient, normalize, lookupCache, saveToCache, confirmCache, rejectCache };

@@ -11,9 +11,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const images = await lookupCache({ year, make, model, body_color, wheel_color, tint_level });
-    if (images) {
-      return res.status(200).json({ hit: true, images });
+    const result = await lookupCache({ year, make, model, body_color, wheel_color, tint_level });
+    if (result) {
+      return res.status(200).json({ hit: true, images: result.images, cacheId: result.cacheId });
     }
     return res.status(200).json({ hit: false });
   } catch (err) {

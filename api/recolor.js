@@ -45,13 +45,14 @@ module.exports = async function handler(req, res) {
       photoRef
     );
 
-    // Save to cache (non-blocking)
+    // Save to cache and return cacheId
+    let cacheId = null;
     if (cacheMetadata) {
       const meta = { ...cacheMetadata, body_color: colorName + (finishName ? ` ${finishName}` : "") };
-      saveToCache(meta, images, carDescription).catch(() => {});
+      cacheId = await saveToCache(meta, images, carDescription).catch(() => null);
     }
 
-    res.status(200).json({ images });
+    res.status(200).json({ images, cacheId });
   } catch (err) {
     console.error("Gemini recolor error:", err);
     res.status(500).json({ error: err.message || "Recolor failed" });

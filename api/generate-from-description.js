@@ -42,12 +42,13 @@ module.exports = async function handler(req, res) {
       `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, year, color, wheels, trim, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
     );
 
-    // Save to cache (non-blocking)
+    // Save to cache and return cacheId
+    let cacheId = null;
     if (cacheMetadata) {
-      saveToCache(cacheMetadata, images, carDescription).catch(() => {});
+      cacheId = await saveToCache(cacheMetadata, images, carDescription).catch(() => null);
     }
 
-    res.status(200).json({ images, carDescription });
+    res.status(200).json({ images, carDescription, cacheId });
   } catch (err) {
     console.error("Gemini API error:", err);
     res.status(500).json({ error: err.message || "Generation failed" });

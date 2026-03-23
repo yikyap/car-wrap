@@ -15,6 +15,9 @@
     },
     "api/cache-lookup.js": {
       "maxDuration": 10
+    },
+    "api/cache-vote.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

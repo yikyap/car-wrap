@@ -208,7 +208,17 @@ let activeSlideCount = BASE_IMAGES.length;
 let usingRealPhotos = false;
 let customCarDescription = null;
 let carMetadata = null; // {year, make, model, body_color, wheel_color} for cache
+let lastCacheId = null; // track current cache entry for confirm/reject voting
 const recolorCache = {};
+
+function voteCacheEntry(cacheId, vote) {
+  if (!cacheId) return;
+  fetch('/api/cache-vote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cacheId, vote }),
+  }).catch(() => {});
+}
 let chatHistory = [];
 let pendingFile = null;
 let uploadedPhoto = null;
@@ -447,6 +457,7 @@ async function generateFromDescription(carDesc) {
       const cacheData = await cacheResp.json();
       if (cacheData.hit) {
         console.log('Cache hit for', carMetadata);
+        lastCacheId = cacheData.cacheId || null;
         await displayGeneratedImages(cacheData.images);
         customCarDescription = carDesc;
         baseCarDescription = carDesc;
@@ -475,6 +486,7 @@ async function generateFromDescription(carDesc) {
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
     const parsed = JSON.parse(text);
+    lastCacheId = parsed.cacheId || null;
     await displayGeneratedImages(parsed.images);
     customCarDescription = carDesc;
     baseCarDescription = carDesc;
@@ -508,6 +520,7 @@ async function recolorCustomCar(color) {
       const cacheData = await cacheResp.json();
       if (cacheData.hit) {
         console.log('Cache hit for recolor:', cacheMeta);
+        lastCacheId = cacheData.cacheId || null;
         recolorCache[cacheKey] = cacheData.images;
         await displayGeneratedImages(cacheData.images);
         updateBadge();
@@ -525,9 +538,10 @@ async function recolorCustomCar(color) {
     const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const text = await resp.text();
     if (!resp.ok) throw new Error(parseError(text, 'Recolor failed'));
-    const { images } = JSON.parse(text);
-    recolorCache[cacheKey] = images;
-    await displayGeneratedImages(images);
+    const parsed = JSON.parse(text);
+    lastCacheId = parsed.cacheId || null;
+    recolorCache[cacheKey] = parsed.images;
+    await displayGeneratedImages(parsed.images);
     updateBadge();
   } finally { hideLoading(); }
 }
@@ -709,6 +723,7 @@ function addPostGenerateConfirm(carDescription) {
   yesBtn.textContent = 'Looks great!';
   yesBtn.onclick = () => {
     btns.remove();
+    voteCacheEntry(lastCacheId, 'confirm');
     chatHistory.push({ role: 'user', parts: [{ text: 'Yes, looks great!' }] });
     if (selectedServices.has('wrap')) {
       addMessageWithPalette('Awesome! Now pick a wrap color or describe your own:');
@@ -722,6 +737,7 @@ function addPostGenerateConfirm(carDescription) {
   noBtn.textContent = 'Not quite';
   noBtn.onclick = () => {
     btns.remove();
+    voteCacheEntry(lastCacheId, 'reject');
     chatHistory.push({ role: 'user', parts: [{ text: 'Not quite, the generated car doesn\'t look right.' }] });
     addMessage('Not quite', 'user');
     addMessage('No worries — what needs to change? I can regenerate it.', 'bot');
