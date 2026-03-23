@@ -1,27 +1,9 @@
-const { GoogleGenAI } = require("@google/genai");
-const { generateAllImages } = require("./_generate-images");
+const { generateAllImages } = require("./_generate-images-openai");
 const { saveToCache } = require("./_supabase");
-const fs = require("fs");
-const path = require("path");
-
-let BG_IMAGE = null;
-
-function loadBgImage() {
-  if (BG_IMAGE) return;
-  const imgDir = path.join(process.cwd(), "images");
-  BG_IMAGE = {
-    data: fs.readFileSync(path.join(imgDir, "showroom-bg.webp")).toString("base64"),
-    mimeType: "image/webp",
-  };
-}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  try { loadBgImage(); } catch (err) {
-    return res.status(500).json({ error: "Failed to load background image: " + err.message });
   }
 
   const { carDescription, cacheMetadata } = req.body;
@@ -29,17 +11,9 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Missing carDescription" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
     const images = await generateAllImages(
-      ai, BG_IMAGE,
-      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, year, color, wheels, trim, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, year, color, wheels, trim, and all details.`
     );
 
     // Save to cache and return cacheId
@@ -50,7 +24,7 @@ module.exports = async function handler(req, res) {
 
     res.status(200).json({ images, carDescription, cacheId });
   } catch (err) {
-    console.error("Gemini API error:", err);
+    console.error("Generation error:", err);
     res.status(500).json({ error: err.message || "Generation failed" });
   }
 };

@@ -1,26 +1,9 @@
 const { GoogleGenAI } = require("@google/genai");
-const { generateAllImages } = require("./_generate-images");
-const fs = require("fs");
-const path = require("path");
-
-let BG_IMAGE = null;
-
-function loadBgImage() {
-  if (BG_IMAGE) return;
-  const imgDir = path.join(process.cwd(), "images");
-  BG_IMAGE = {
-    data: fs.readFileSync(path.join(imgDir, "showroom-bg.webp")).toString("base64"),
-    mimeType: "image/webp",
-  };
-}
+const { generateAllImages } = require("./_generate-images-openai");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  try { loadBgImage(); } catch (err) {
-    return res.status(500).json({ error: "Failed to load background image: " + err.message });
   }
 
   const { photo, mimeType } = req.body;
@@ -28,15 +11,14 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Missing photo or mimeType" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
     return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
-    // Step 1: Analyze the uploaded photo to identify the car
+    // Step 1: Analyze the uploaded photo with Gemini (fast + cheap for text analysis)
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
     const analysisResult = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
@@ -65,17 +47,16 @@ Respond with ONLY a single paragraph description, no bullet points or labels. Be
       analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "a car";
     console.log("Car identified as:", carDescription);
 
-    // Step 2: Generate 6 showroom views
+    // Step 2: Generate 6 showroom views with OpenAI GPT-Image-1.5
     const userPhoto = { data: photo, mimeType };
     const images = await generateAllImages(
-      ai, BG_IMAGE,
-      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, color, wheels, and all details. Dark studio showroom with subtle center spotlight on dark concrete floor. Professional car photograph, not a rendering.`,
+      `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, color, wheels, and all details.`,
       userPhoto
     );
 
     res.status(200).json({ images, carDescription });
   } catch (err) {
-    console.error("Gemini API error:", err);
+    console.error("Generation error:", err);
     res.status(500).json({ error: err.message || "Generation failed" });
   }
 };

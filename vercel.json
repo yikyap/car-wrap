@@ -2,16 +2,16 @@
   "functions": {
     "api/generate.js": {
       "maxDuration": 60,
-      "includeFiles": "images/showroom-bg.webp"
+      "includeFiles": "images/showroom-bg.png"
     },
     "api/recolor.js": {
       "maxDuration": 60,
-      "includeFiles": "images/showroom-bg.webp",
+      "includeFiles": "images/showroom-bg.png",
       "memory": 1024
     },
     "api/generate-from-description.js": {
       "maxDuration": 60,
-      "includeFiles": "images/showroom-bg.webp"
+      "includeFiles": "images/showroom-bg.png"
     },
     "api/cache-lookup.js": {
       "maxDuration": 10
