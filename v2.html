@@ -1137,9 +1137,37 @@ function startDescribe() {
     // Store structured data
     carMetadata = { year, make, model, body_color: null, wheel_color: null };
 
-    // Disable form
+    // Disable form and show edit button
     yearInput.disabled = true; makeInput.disabled = true; modelInput.disabled = true;
     nextBtn.remove();
+
+    // Mark where subsequent messages start so we can remove them on edit
+    const editMarker = document.createComment('edit-marker');
+    chatMessages.appendChild(editMarker);
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    editBtn.style.cssText = 'align-self:flex-start;padding:6px 14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.2s;margin-top:-2px;';
+    editBtn.onmouseenter = () => { editBtn.style.borderColor = 'rgba(212,168,50,0.4)'; editBtn.style.color = '#d4a832'; };
+    editBtn.onmouseleave = () => { editBtn.style.borderColor = 'rgba(255,255,255,0.15)'; editBtn.style.color = 'rgba(255,255,255,0.5)'; };
+    editBtn.onclick = () => {
+      // Remove all messages after the form
+      while (editMarker.nextSibling) editMarker.nextSibling.remove();
+      editMarker.remove();
+      // Re-enable inputs
+      yearInput.disabled = false; makeInput.disabled = false; modelInput.disabled = false;
+      editBtn.replaceWith(reNextBtn);
+      yearInput.focus();
+      // Reset chat history back to the describe prompt
+      chatHistory.length = Math.max(chatHistory.length - 1, 0);
+      while (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].parts[0].text !== "I'll describe my car") chatHistory.pop();
+    };
+    const reNextBtn = document.createElement('button');
+    reNextBtn.className = 'confirm-btn yes';
+    reNextBtn.textContent = 'Next';
+    reNextBtn.style.cssText = 'width:100%;margin-top:2px;padding:12px;';
+    reNextBtn.onclick = () => nextBtn.onclick();
+    form.appendChild(editBtn);
 
     addMessage(year + ' ' + make + ' ' + model, 'user');
     chatHistory.push({ role: 'user', parts: [{ text: year + ' ' + make + ' ' + model }] });
