@@ -5,13 +5,13 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { year, make, model, body_color, wheel_color, tint_level } = req.body;
+  const { year, make, model, body_color, wheel_color, trim_color, tint_level } = req.body;
   if (!year || !make || !model || !body_color) {
     return res.status(400).json({ error: "Missing required fields: year, make, model, body_color" });
   }
 
   try {
-    const result = await lookupCache({ year, make, model, body_color, wheel_color, tint_level });
+    const result = await lookupCache({ year, make, model, body_color, wheel_color, trim_color, tint_level });
     if (result) {
       return res.status(200).json({ hit: true, images: result.images, cacheId: result.cacheId });
     }

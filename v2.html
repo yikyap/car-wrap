@@ -210,7 +210,7 @@ const baseSlideData = [];
 let activeSlideCount = BASE_IMAGES.length;
 let usingRealPhotos = false;
 let customCarDescription = null;
-let carMetadata = null; // {year, make, model, body_color, wheel_color} for cache
+let carMetadata = null; // {year, make, model, body_color, wheel_color, trim_color} for cache
 let lastCacheId = null; // track current cache entry for confirm/reject voting
 const recolorCache = {};
 
@@ -1148,6 +1148,7 @@ function startDescribe() {
         showTrimPicker((trimColor) => {
           const desc = `A ${year} ${make} ${model} in ${color} with ${rimColor} rims and ${trimColor} trim`;
           carMetadata.body_color = color;
+          carMetadata.trim_color = trimColor;
 
           addMessage(trimColor + ' trim', 'user');
           chatHistory.push({ role: 'user', parts: [{ text: trimColor + ' trim' }] });

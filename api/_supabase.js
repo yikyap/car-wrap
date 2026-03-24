@@ -16,7 +16,7 @@ function normalize(str) {
   return str ? str.trim().toLowerCase().replace(/\s+/g, " ") : null;
 }
 
-async function lookupCache({ year, make, model, body_color, wheel_color, tint_level }) {
+async function lookupCache({ year, make, model, body_color, wheel_color, trim_color, tint_level }) {
   const sb = getClient();
   let query = sb
     .from("visualizer_cache")
@@ -30,6 +30,12 @@ async function lookupCache({ year, make, model, body_color, wheel_color, tint_le
     query = query.eq("wheel_color", normalize(wheel_color));
   } else {
     query = query.is("wheel_color", null);
+  }
+
+  if (trim_color) {
+    query = query.eq("trim_color", normalize(trim_color));
+  } else {
+    query = query.is("trim_color", null);
   }
 
   if (tint_level) {
@@ -120,6 +126,7 @@ async function saveToCache(metadata, base64Images, carDescription) {
       model: normalize(metadata.model),
       body_color: normalize(metadata.body_color),
       wheel_color: normalize(metadata.wheel_color),
+      trim_color: normalize(metadata.trim_color),
       tint_level: normalize(metadata.tint_level),
       images: imageUrls,
       car_description: carDescription || null,
