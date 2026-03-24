@@ -1559,9 +1559,8 @@ function showFinalConfirmation() {
 }
 
 // === Init ===
-// Load matte black Tesla as default showcase
-const matteBlackImages = COLORS.find(c => c.name === 'Matte black').images;
-preloadImages(matteBlackImages).then(imgs => {
+// Load base images as default showcase
+preloadImages(BASE_IMAGES).then(imgs => {
   const { slides, preserved } = createSlides(imgs.length);
   imgs.forEach((img, i) => {
     const canvas = slides[i].querySelector('canvas');
