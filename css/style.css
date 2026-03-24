@@ -170,8 +170,8 @@ select.form-field option { background: var(--navy); }
 .estimate-field::placeholder { color: var(--gray-400); }
 .estimate-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer; }
 .estimate-select option { background: var(--navy); }
-.estimate-btn { white-space: nowrap; border-color: var(--gold) !important; color: var(--gold) !important; }
-.estimate-btn:hover { background: var(--gold) !important; color: var(--black) !important; }
+.estimate-btn { white-space: nowrap; background: var(--gold) !important; border-color: var(--gold) !important; color: var(--black) !important; font-weight: 600; }
+.estimate-btn:hover { background: var(--gold-light) !important; border-color: var(--gold-light) !important; color: var(--black) !important; }
 
 /* === Quote Form (expandable) === */
 .quote-form-section { max-height: 0; overflow: hidden; background: var(--black); transition: max-height 0.5s ease; }
