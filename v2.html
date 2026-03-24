@@ -444,7 +444,16 @@ function displayGeneratedImages(images) {
 function showMobileCarousel() {}
 function minimizeMobileChat() {}
 
-function updateBadge() { document.getElementById('badge').textContent = st.color.name + ' \u00b7 ' + st.finish.name; }
+function getBadgeLabel() {
+  if (carMetadata && carMetadata.year && carMetadata.make && carMetadata.model) {
+    return carMetadata.year + ' ' + carMetadata.make + ' ' + carMetadata.model;
+  }
+  return null;
+}
+function updateBadge() {
+  const label = getBadgeLabel();
+  document.getElementById('badge').textContent = label || (st.color.name + ' \u00b7 ' + st.finish.name);
+}
 
 // === Generate & Recolor ===
 async function generateViews() {
@@ -462,9 +471,7 @@ async function generateViews() {
     customCarDescription = parsed.carDescription || null;
     baseCarDescription = customCarDescription;
     Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
-    const desc = customCarDescription || 'Your car';
-    const shortDesc = desc.length > 50 ? desc.substring(0, 50).replace(/\s\S*$/, '...') : desc;
-    document.getElementById('badge').textContent = shortDesc;
+    document.getElementById('badge').textContent = getBadgeLabel() || 'Your car';
   } finally { hideLoading(); }
 }
 
@@ -489,8 +496,7 @@ async function generateFromDescription(carDesc) {
         customCarDescription = carDesc;
         baseCarDescription = carDesc;
         Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
-        const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
-        document.getElementById('badge').textContent = shortDesc;
+        document.getElementById('badge').textContent = getBadgeLabel() || 'Your car';
         hideLoading();
         return;
       }
