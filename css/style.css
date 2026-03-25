@@ -260,7 +260,7 @@ select.form-field option { background: var(--navy); }
 }
 
 /* === Page Banner === */
-.page-banner { padding: 8rem 0 3rem; background: var(--navy); text-align: center; }
+.page-banner { padding: 6rem 0 2.5rem; background: var(--navy); text-align: center; }
 .page-banner h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; }
 .page-banner p { color: var(--gray-400); margin-top: 0.75rem; font-size: 16px; }
 
