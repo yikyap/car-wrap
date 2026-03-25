@@ -159,19 +159,19 @@ select.form-field option { background: var(--navy); }
 .social-link:hover { background: var(--gold); color: var(--black); }
 
 /* === Estimate Bar === */
-.estimate-bar { padding: 3.5rem 0; background: var(--navy); text-align: center; position: relative; overflow: hidden; }
-.estimate-bar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(212,168,50,0.08) 0%, transparent 50%); }
+.estimate-bar { padding: 3.5rem 0; background: var(--gold); text-align: center; position: relative; overflow: hidden; }
+.estimate-bar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,0,0,0.05) 0%, transparent 50%); }
 .estimate-bar .container { position: relative; z-index: 2; }
-.estimate-bar-title { font-size: clamp(22px, 4vw, 32px); font-weight: 700; letter-spacing: 2px; margin-bottom: 0.5rem; }
-.estimate-bar-sub { font-size: 14px; color: var(--gray-400); margin-bottom: 2rem; }
+.estimate-bar-title { font-size: clamp(22px, 4vw, 32px); font-weight: 700; letter-spacing: 2px; margin-bottom: 0.5rem; color: var(--black); }
+.estimate-bar-sub { font-size: 14px; color: rgba(0,0,0,0.6); margin-bottom: 2rem; }
 .estimate-bar-form { display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
-.estimate-field { padding: 14px 18px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: var(--white); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.2s; min-width: 180px; }
-.estimate-field:focus { border-color: var(--gold); }
-.estimate-field::placeholder { color: var(--gray-400); }
-.estimate-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer; }
-.estimate-select option { background: var(--navy); }
-.estimate-btn { white-space: nowrap; background: var(--gold) !important; border-color: var(--gold) !important; color: var(--black) !important; font-weight: 600; }
-.estimate-btn:hover { background: var(--gold-light) !important; border-color: var(--gold-light) !important; color: var(--black) !important; }
+.estimate-field { padding: 14px 18px; background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; color: var(--black); font-size: 14px; font-family: var(--font); outline: none; transition: border-color 0.2s; min-width: 180px; }
+.estimate-field:focus { border-color: var(--black); }
+.estimate-field::placeholder { color: var(--gray-600); }
+.estimate-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23444' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer; }
+.estimate-select option { background: var(--white); color: var(--black); }
+.estimate-btn { white-space: nowrap; background: var(--black) !important; border-color: var(--black) !important; color: var(--white) !important; font-weight: 600; }
+.estimate-btn:hover { background: var(--navy) !important; border-color: var(--navy) !important; color: var(--white) !important; }
 
 /* === Quote Form (expandable) === */
 .quote-form-section { max-height: 0; overflow: hidden; background: var(--black); transition: max-height 0.5s ease; }
