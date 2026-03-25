@@ -25,19 +25,56 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.15 });
 reveals.forEach(el => revealObserver.observe(el));
 
-// === Gallery filter ===
-const filterBtns = document.querySelectorAll('.gallery-filter');
-const galleryItems = document.querySelectorAll('.gallery-item');
-filterBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    filterBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const cat = btn.dataset.filter;
-    galleryItems.forEach(item => {
-      item.style.display = (cat === 'all' || item.dataset.cat === cat) ? '' : 'none';
+// === Lightbox ===
+const lightbox = document.getElementById('lightbox');
+if (lightbox) {
+  const lbImg = lightbox.querySelector('.lightbox-img');
+  const lbCounter = lightbox.querySelector('.lightbox-counter');
+  const mosaicItems = [...document.querySelectorAll('.mosaic-item[data-src]')];
+  let currentIdx = 0;
+
+  const showImage = (idx) => {
+    currentIdx = idx;
+    lbImg.src = mosaicItems[idx].dataset.src;
+    lbImg.alt = mosaicItems[idx].querySelector('img').alt;
+    lbCounter.textContent = `${idx + 1} / ${mosaicItems.length}`;
+  };
+
+  mosaicItems.forEach((item, i) => {
+    item.addEventListener('click', () => {
+      showImage(i);
+      lightbox.classList.add('open');
+      document.body.style.overflow = 'hidden';
     });
   });
-});
+
+  lightbox.querySelector('.lightbox-close').addEventListener('click', () => {
+    lightbox.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+
+  lightbox.querySelector('.lightbox-prev').addEventListener('click', () => {
+    showImage((currentIdx - 1 + mosaicItems.length) % mosaicItems.length);
+  });
+
+  lightbox.querySelector('.lightbox-next').addEventListener('click', () => {
+    showImage((currentIdx + 1) % mosaicItems.length);
+  });
+
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) {
+      lightbox.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!lightbox.classList.contains('open')) return;
+    if (e.key === 'Escape') { lightbox.classList.remove('open'); document.body.style.overflow = ''; }
+    if (e.key === 'ArrowLeft') showImage((currentIdx - 1 + mosaicItems.length) % mosaicItems.length);
+    if (e.key === 'ArrowRight') showImage((currentIdx + 1) % mosaicItems.length);
+  });
+}
 
 // === Estimate bar expand ===
 const expandBtn = document.getElementById('estimate-expand-btn');
