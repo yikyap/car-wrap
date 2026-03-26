@@ -30,10 +30,35 @@
     },
     "api/cache-vote.js": {
       "maxDuration": 10
+    },
+    "api/lead.js": {
+      "maxDuration": 15
+    },
+    "api/track.js": {
+      "maxDuration": 10
+    },
+    "api/dashboard/stats.js": {
+      "maxDuration": 15
+    },
+    "api/dashboard/leads.js": {
+      "maxDuration": 10
+    },
+    "api/dashboard/messages.js": {
+      "maxDuration": 10
+    },
+    "api/dashboard/review.js": {
+      "maxDuration": 15
+    },
+    "api/sms/inbound.js": {
+      "maxDuration": 10
+    },
+    "api/sms/reply.js": {
+      "maxDuration": 15
     }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/visualizer", "destination": "/v2.html" },
     { "source": "/v2", "destination": "/v2.html" },
     { "source": "/gallery", "destination": "/gallery.html" },

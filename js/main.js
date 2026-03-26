@@ -135,22 +135,65 @@ if (form) {
 
     const data = Object.fromEntries(new FormData(form));
     const hearAbout = [...form.querySelectorAll('[name="hearAbout"]:checked')].map(c => c.value).join(', ');
+    const name = ((data.firstName || '') + ' ' + (data.lastName || '')).trim();
+    const vehicle = [data.year, data.vehicle].filter(Boolean).join(' ');
+    const urlParams = new URLSearchParams(window.location.search);
+    const referral = urlParams.get('ref') || null;
 
     try {
-      const name = (data.firstName || '') + ' ' + (data.lastName || '');
-      const subject = encodeURIComponent('Quote Request: ' + (data.vehicle || 'Vehicle'));
+      // Store lead in CRM
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone: data.phone,
+          email: data.email || null,
+          service: data.service || null,
+          vehicle: vehicle || null,
+          message: [data.message, hearAbout ? 'Heard via: ' + hearAbout : ''].filter(Boolean).join('\n') || null,
+          source: 'website_form',
+          referral,
+        }),
+      });
+
+      if (res.ok) {
+        btn.textContent = 'Sent!';
+        form.reset();
+      } else {
+        throw new Error('Failed');
+      }
+    } catch (err) {
+      // Fallback to mailto if API fails
+      const subject = encodeURIComponent('Quote Request: ' + (vehicle || 'Vehicle'));
       const body = encodeURIComponent(
-        `Name: ${name.trim()}\nEmail: ${data.email}\nPhone: ${data.phone}\nVehicle: ${data.vehicle}\nYear: ${data.year || 'N/A'}\nService: ${data.service}\n\nAdditional Info:\n${data.message || 'N/A'}\n\nHow they heard of us: ${hearAbout || 'N/A'}`
+        `Name: ${name}\nEmail: ${data.email}\nPhone: ${data.phone}\nVehicle: ${vehicle}\nService: ${data.service}\n\nAdditional Info:\n${data.message || 'N/A'}\n\nHow they heard of us: ${hearAbout || 'N/A'}`
       );
       window.location.href = `mailto:Contact@hausofwraps.com?subject=${subject}&body=${body}`;
       btn.textContent = 'Sent!';
       form.reset();
-    } catch (err) {
-      btn.textContent = 'Error — try again';
     }
     setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 3000);
   });
 }
+
+// === Page view tracking ===
+(function trackPageView() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: window.location.pathname,
+        referrer: document.referrer || null,
+        utm_source: params.get('utm_source') || null,
+        utm_medium: params.get('utm_medium') || null,
+        utm_campaign: params.get('utm_campaign') || null,
+      }),
+    }).catch(() => {});
+  } catch (e) {}
+})();
 
 // === Auto-scroll reviews ===
 const reviewsContainer = document.querySelector('.trust-reviews');

@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Haus of Wraps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root {
+  --gold: #D4A832;
+  --gold-light: #E0BE55;
+  --navy: #0B1526;
+  --navy-light: #152238;
+  --primary: #D4A832;
+  --primary-light: #fdf8e8;
+  --primary-dark: #B8922A;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: #f9fafb; color: #111; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+
+/* Topbar */
+.topbar { background: #fff; border-bottom: 1px solid #f0f0f0; padding: 1rem 0; position: sticky; top: 0; z-index: 50; }
+.topbar-inner { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.topbar-brand { font-size: 15px; font-weight: 600; color: #111; }
+.topbar-brand span { color: var(--gold); }
+.topbar-brand small { display: block; font-size: 11px; color: #999; font-weight: 400; }
+.topbar-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.topbar-select { font-size: 12px; padding: 6px 12px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fafafa; color: #666; cursor: pointer; font-family: var(--font); }
+.topbar-tabs { display: flex; background: #f3f4f6; border-radius: 8px; padding: 2px; }
+.topbar-tab { font-size: 12px; padding: 6px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; border: none; background: none; color: #6b7280; transition: all 0.15s; white-space: nowrap; }
+.topbar-tab.active { background: #fff; color: #111; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.topbar-tab:hover:not(.active) { color: #374151; }
+.demo-btn { font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 500; cursor: pointer; border: 1px solid #e5e5e5; background: none; color: #6b7280; }
+.demo-btn.on { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.site-link { font-size: 12px; padding: 5px 12px; border: 1px solid #e5e5e5; border-radius: 8px; color: #6b7280; }
+.site-link:hover { background: #fafafa; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+
+/* Content */
+.dash-content { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+
+/* Cards */
+.card { background: #fff; border-radius: 16px; border: 1px solid #f0f0f0; padding: 1.5rem; }
+.card-title { font-size: 13px; font-weight: 600; color: #111; margin-bottom: 4px; }
+.card-sub { font-size: 12px; color: #999; margin-bottom: 1.25rem; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.metric-card { background: #fff; border-radius: 16px; border: 1px solid #f0f0f0; padding: 1.5rem; }
+.metric-label { font-size: 11px; font-weight: 500; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+.metric-value { font-size: 32px; font-weight: 700; color: #111; margin-top: 8px; }
+.metric-value.gold { color: var(--gold); }
+.metric-delta { font-size: 12px; margin-top: 6px; }
+.metric-delta.up { color: #16a34a; }
+.metric-delta.down { color: #ef4444; }
+.metric-note { font-size: 11px; color: #999; margin-top: 4px; }
+
+/* Progress bars */
+.progress-bar { width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.progress-fill.gold { background: var(--gold); }
+.progress-fill.green { background: #16a34a; }
+.progress-fill.purple { background: #7c3aed; }
+
+/* Source list */
+.source-row { margin-bottom: 1rem; }
+.source-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.source-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #374151; }
+.source-badge { font-size: 10px; padding: 1px 6px; border-radius: 9999px; font-weight: 500; }
+.source-badge.ai { background: #f5f3ff; color: #7c3aed; }
+.source-badge.paid { background: #f0fdf4; color: #16a34a; }
+.source-count { display: flex; align-items: center; gap: 6px; }
+.source-count strong { font-size: 13px; font-weight: 600; color: #111; }
+.source-count small { font-size: 11px; color: #999; }
+
+/* Lead pipeline */
+.pipeline-filters { display: flex; gap: 6px; padding: 1rem 1.25rem; border-bottom: 1px solid #f0f0f0; overflow-x: auto; flex-wrap: wrap; }
+.filter-btn { font-size: 12px; padding: 5px 12px; border-radius: 9999px; border: 1px solid #e5e5e5; background: none; color: #6b7280; cursor: pointer; white-space: nowrap; font-family: var(--font); transition: all 0.15s; }
+.filter-btn.active { border-color: var(--gold); color: var(--primary-dark); background: var(--primary-light); }
+.lead-item { padding: 1rem 1.25rem; border-bottom: 1px solid #fafafa; }
+.lead-item:last-child { border-bottom: none; }
+.lead-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.lead-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lead-name { font-size: 13px; font-weight: 600; color: #111; }
+.lead-quality { font-size: 10px; padding: 2px 6px; border-radius: 9999px; font-weight: 500; }
+.lead-detail { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lead-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.status-badge { font-size: 11px; padding: 3px 8px; border-radius: 9999px; font-weight: 500; }
+.lead-time { font-size: 11px; color: #ccc; }
+.lead-notes { margin-top: 8px; margin-left: 24px; }
+.lead-notes-btn { font-size: 12px; color: #999; cursor: pointer; border: none; background: none; padding: 0; font-family: var(--font); }
+.lead-notes-btn:hover { color: #666; }
+.lead-actions { display: flex; gap: 6px; margin-top: 8px; margin-left: 24px; flex-wrap: wrap; }
+.action-btn { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; cursor: pointer; font-family: var(--font); transition: all 0.15s; white-space: nowrap; }
+.action-btn:hover { background: #fafafa; }
+.action-btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+.action-btn.primary:hover { opacity: 0.9; }
+.action-btn.green { border-color: #bbf7d0; color: #15803d; }
+.action-btn.green:hover { background: #f0fdf4; }
+.action-btn.amber { border-color: #fde68a; color: #92400e; }
+.action-btn.amber:hover { background: #fffbeb; }
+.action-btn.danger { color: #999; }
+.action-btn.danger:hover { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-top: 1px solid #f0f0f0; }
+.page-sizes { display: flex; align-items: center; gap: 4px; }
+.page-sizes span { font-size: 12px; color: #999; }
+.page-size-btn { font-size: 12px; padding: 3px 8px; border-radius: 4px; border: none; background: none; cursor: pointer; font-weight: 500; color: #999; font-family: var(--font); }
+.page-size-btn.active { background: var(--primary-light); color: var(--primary-dark); }
+.page-nav { display: flex; align-items: center; gap: 8px; }
+.page-nav span { font-size: 12px; color: #999; }
+.page-nav button { width: 28px; height: 28px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6b7280; }
+.page-nav button:disabled { opacity: 0.3; cursor: default; }
+
+/* Modals */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal { background: #fff; border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.15); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #fff; border-radius: 16px 16px 0 0; z-index: 1; }
+.modal-header h3 { font-size: 15px; font-weight: 600; }
+.modal-close { border: none; background: none; font-size: 18px; color: #999; cursor: pointer; }
+.modal-body { padding: 1.5rem; }
+.modal-body label { font-size: 12px; font-weight: 500; color: #374151; display: block; margin-bottom: 4px; }
+.modal-body input, .modal-body select, .modal-body textarea {
+  width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid #e5e5e5;
+  border-radius: 8px; background: #fafafa; color: #111; font-family: var(--font);
+}
+.modal-body textarea { resize: none; }
+.modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+.modal-actions button { flex: 1; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font); border: 1px solid #e5e5e5; background: #fff; color: #374151; }
+.modal-actions .btn-confirm { background: var(--navy); color: #fff; border-color: var(--navy); }
+.modal-actions .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+/* SMS Thread */
+.sms-thread { background: #f9fafb; border-radius: 12px; border: 1px solid #f0f0f0; margin-top: 0.75rem; max-height: 400px; display: flex; flex-direction: column; }
+.sms-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; min-height: 120px; }
+.sms-bubble { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+.sms-bubble.inbound { background: #fff; border: 1px solid #e5e5e5; align-self: flex-start; border-bottom-left-radius: 4px; }
+.sms-bubble.outbound { background: var(--navy); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.sms-time { font-size: 10px; color: #999; margin-top: 2px; }
+.sms-input-row { display: flex; gap: 0.5rem; padding: 0.75rem; border-top: 1px solid #f0f0f0; }
+.sms-input { flex: 1; padding: 8px 12px; font-size: 13px; border: 1px solid #e5e5e5; border-radius: 8px; font-family: var(--font); }
+.sms-send { padding: 8px 16px; background: var(--navy); color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font); }
+.sms-templates { display: flex; gap: 4px; padding: 0 0.75rem 0.5rem; flex-wrap: wrap; }
+.sms-template { font-size: 11px; padding: 3px 8px; border-radius: 6px; border: 1px solid #e5e5e5; background: #fff; cursor: pointer; font-family: var(--font); color: #666; }
+.sms-template:hover { background: #fafafa; }
+
+/* Calendar */
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.cal-nav { display: flex; align-items: center; gap: 0.75rem; }
+.cal-nav button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.cal-nav span { font-size: 15px; font-weight: 600; color: #111; min-width: 160px; text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #f0f0f0; border-radius: 12px; overflow: hidden; }
+.cal-day-header { background: #fafafa; padding: 8px; text-align: center; font-size: 11px; font-weight: 500; color: #999; text-transform: uppercase; }
+.cal-day { background: #fff; min-height: 80px; padding: 6px; cursor: pointer; transition: background 0.1s; }
+.cal-day:hover { background: #fafafa; }
+.cal-day.today { background: var(--primary-light); }
+.cal-day.other-month { background: #fafafa; }
+.cal-day-num { font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 4px; }
+.cal-day.other-month .cal-day-num { color: #ccc; }
+.cal-event { font-size: 10px; padding: 2px 4px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+
+/* Follow-ups */
+.followup-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #fafafa; }
+.followup-info h4 { font-size: 13px; font-weight: 600; color: #111; }
+.followup-info p { font-size: 12px; color: #999; margin-top: 2px; }
+.followup-actions { display: flex; gap: 0.5rem; }
+
+/* Link generator */
+.link-result { margin-top: 1rem; padding: 1rem; background: #fafafa; border-radius: 12px; border: 1px solid #f0f0f0; }
+.link-url { font-size: 13px; color: var(--primary-dark); word-break: break-all; font-weight: 500; }
+.copy-btn { margin-top: 0.5rem; font-size: 12px; padding: 6px 16px; background: var(--navy); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: var(--font); font-weight: 500; }
+
+/* Advanced */
+.funnel { display: flex; flex-direction: column; gap: 0.5rem; }
+.funnel-stage { display: flex; align-items: center; gap: 1rem; }
+.funnel-bar { height: 32px; border-radius: 6px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 600; color: #fff; transition: width 0.4s; min-width: 40px; }
+.funnel-label { font-size: 12px; color: #6b7280; white-space: nowrap; min-width: 80px; }
+.funnel-count { font-size: 13px; font-weight: 600; color: #111; min-width: 40px; text-align: right; }
+
+/* Notification banner */
+.notif-banner { background: #eff6ff; border-bottom: 1px solid #dbeafe; padding: 10px 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.notif-banner span { font-size: 12px; color: #1e40af; }
+.notif-banner button { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 8px; background: var(--navy); color: #fff; border: none; cursor: pointer; font-family: var(--font); }
+
+.demo-banner { background: #fffbeb; border-bottom: 1px solid #fde68a; padding: 8px; text-align: center; font-size: 12px; color: #92400e; }
+
+/* Alert */
+.alert { border-radius: 16px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.alert.red { background: #fef2f2; border: 1px solid #fecaca; }
+.alert.red p { font-size: 13px; color: #991b1b; }
+
+/* Quick stats */
+.quick-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.quick-stat { text-align: center; padding: 0.75rem; background: #fafafa; border-radius: 12px; }
+.quick-stat .num { font-size: 20px; font-weight: 700; color: #111; }
+.quick-stat .label { font-size: 11px; color: #999; margin-top: 4px; }
+
+/* Tip */
+.tip { border-radius: 16px; padding: 1rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--primary-light); }
+.tip p { font-size: 12px; color: var(--primary-dark); }
+
+/* Profile modal sections */
+.profile-section { margin-bottom: 1.25rem; }
+.profile-section h4 { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+.profile-field { padding: 0.5rem 0.75rem; background: #fafafa; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: background 0.1s; }
+.profile-field:hover { background: #f0f0f0; }
+.profile-field .field-label { font-size: 11px; color: #999; }
+.profile-field .field-value { font-size: 13px; font-weight: 500; color: #111; }
+.profile-field .field-placeholder { font-size: 13px; color: #ccc; }
+
+/* Status buttons */
+.status-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-btn { font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; opacity: 0.5; }
+.status-btn:hover { opacity: 0.8; }
+.status-btn.active { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+
+/* Chart */
+.chart-container { position: relative; height: 250px; margin-top: 1rem; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .quick-stats { grid-template-columns: repeat(2, 1fr); }
+  .topbar-tabs { overflow-x: auto; }
+  .topbar-right { width: 100%; justify-content: space-between; }
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-brand">
+      <span>Haus of</span> Wraps
+      <small>Dashboard</small>
+    </div>
+    <div class="topbar-right">
+      <select class="topbar-select" id="period-select">
+        <option value="7d">Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="90d">Last 90 days</option>
+        <option value="all">All time</option>
+      </select>
+      <div class="topbar-tabs" id="view-tabs">
+        <button class="topbar-tab active" data-view="marketing">Marketing</button>
+        <button class="topbar-tab" data-view="leads">Leads</button>
+        <button class="topbar-tab" data-view="calendar">Calendar</button>
+        <button class="topbar-tab" data-view="followups">Follow-ups</button>
+        <button class="topbar-tab" data-view="links">Links</button>
+        <button class="topbar-tab" data-view="advanced">Advanced</button>
+      </div>
+      <button class="demo-btn" id="demo-toggle">Demo</button>
+      <a href="/" class="site-link">← Site</a>
+      <div class="avatar">HW</div>
+    </div>
+  </div>
+</div>
+
+<div id="notif-banner" class="notif-banner hidden">
+  <span>Want to get notified when a new lead comes in?</span>
+  <button id="enable-notif">Enable notifications</button>
+</div>
+<div id="demo-banner" class="demo-banner hidden">
+  <strong>Demo mode</strong> — showing sample data. Toggle off to see real data.
+</div>
+
+<!-- Views -->
+<div class="dash-content">
+  <!-- Marketing View -->
+  <div id="view-marketing"></div>
+  <!-- Leads View -->
+  <div id="view-leads" class="hidden"></div>
+  <!-- Calendar View -->
+  <div id="view-calendar" class="hidden"></div>
+  <!-- Follow-ups View -->
+  <div id="view-followups" class="hidden"></div>
+  <!-- Links View -->
+  <div id="view-links" class="hidden"></div>
+  <!-- Advanced View -->
+  <div id="view-advanced" class="hidden"></div>
+</div>
+
+<!-- Modal container -->
+<div id="modal-root"></div>
+
+<script>
+// ── State ──
+let currentView = 'marketing';
+let period = '7d';
+let stats = null;
+let leads = [];
+let demo = false;
+let statusFilter = 'all';
+let pageSize = 10;
+let page = 0;
+let prevLeadIds = new Set();
+let isFirstLoad = true;
+let pollInterval = null;
+
+// ── Sample Data ──
+const sampleStats = {
+  period: '7d', visitors: 347, visitorsPrev: 298, totalLeads: 42, leads: 12, leadsPrev: 9,
+  formLeads: 7, chatLeads: 3, contactLeads: 2,
+  hot: 4, active: 3, booked: 2, completed: 28, lost: 5,
+  sources: [
+    { source: 'website_form', count: 7 }, { source: 'chat_widget', count: 3 }, { source: 'contact_form', count: 2 }
+  ],
+  trafficSources: [
+    { source: 'google_search', count: 142 }, { source: 'direct', count: 78 }, { source: 'instagram', count: 45 },
+    { source: 'yelp', count: 32 }, { source: 'facebook', count: 28 }, { source: 'chatgpt', count: 12 },
+    { source: 'google_maps', count: 10 }
+  ]
+};
+const sampleLeads = [
+  { id:'s1',name:'Marcus Johnson',phone:'(619) 555-0142',email:'marcus@email.com',service:'Full Color Change Wrap',vehicle:'2024 Tesla Model 3',message:'Want matte black wrap',source:'website_form',referral:null,status:'hot',appointment_at:null,notes:null,review_sent:false,created_at:new Date(Date.now()-3600000).toISOString() },
+  { id:'s2',name:'Sarah Chen',phone:'(858) 555-0198',email:'sarah.c@gmail.com',service:'Paint Protection Film',vehicle:'2023 Porsche 911',message:null,source:'website_form',referral:'google',status:'hot',appointment_at:null,notes:null,review_sent:false,created_at:new Date(Date.now()-7200000).toISOString() },
+  { id:'s3',name:'David Rodriguez',phone:'(760) 555-0167',email:null,service:'Window Tint',vehicle:'2022 BMW X5',message:'Ceramic tint quote',source:'chat_widget',referral:null,status:'active',appointment_at:null,notes:'Called, waiting for callback',review_sent:false,created_at:new Date(Date.now()-86400000).toISOString() },
+  { id:'s4',name:'Emily Park',phone:'(619) 555-0234',email:'em.park@yahoo.com',service:'Partial Wrap - Hood & Roof',vehicle:'2024 Mercedes C300',message:null,source:'website_form',referral:'instagram',status:'active',appointment_at:null,notes:null,review_sent:false,created_at:new Date(Date.now()-172800000).toISOString() },
+  { id:'s5',name:'Jake Williams',phone:'(858) 555-0321',email:'jake.w@gmail.com',service:'Full Color Change Wrap',vehicle:'2023 Ford Mustang',message:'Satin blue wrap',source:'contact_form',referral:null,status:'booked',appointment_at:new Date(Date.now()+172800000).toISOString(),notes:'Deposit paid',review_sent:false,created_at:new Date(Date.now()-259200000).toISOString() },
+  { id:'s6',name:'Lisa Thompson',phone:'(619) 555-0456',email:'lisa.t@email.com',service:'PPF + Window Tint',vehicle:'2024 Audi RS5',message:null,source:'website_form',referral:'yelp',status:'booked',appointment_at:new Date(Date.now()+432000000).toISOString(),notes:'Full front PPF + ceramic tint',review_sent:false,created_at:new Date(Date.now()-345600000).toISOString() },
+  { id:'s7',name:'Ryan Martinez',phone:'(760) 555-0789',email:null,service:'Full Color Change Wrap',vehicle:'2022 Dodge Charger',message:null,source:'website_form',referral:null,status:'completed',appointment_at:null,notes:'Matte military green - turned out great',review_sent:true,created_at:new Date(Date.now()-604800000).toISOString() },
+  { id:'s8',name:'Amanda Lee',phone:'(619) 555-0567',email:'amanda@email.com',service:'Chrome Delete',vehicle:'2023 Tesla Model Y',message:'Chrome delete + tint package',source:'chat_widget',referral:null,status:'active',appointment_at:null,notes:null,review_sent:false,created_at:new Date(Date.now()-86400000*2).toISOString() },
+  { id:'s9',name:'Tom Baker',phone:'(858) 555-0890',email:null,service:null,vehicle:'2021 BMW M4',message:'General inquiry',source:'website_form',referral:null,status:'hot',appointment_at:null,notes:null,review_sent:false,created_at:new Date(Date.now()-1800000).toISOString() },
+];
+
+// ── Helpers ──
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? 'Yesterday' : `${days}d ago`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+const statusConfig = {
+  hot:       { label:'Hot',       color:'#dc2626', bg:'#fef2f2', dot:'&#x1f534;' },
+  active:    { label:'Active',    color:'#d97706', bg:'#fffbeb', dot:'&#x1f7e1;' },
+  booked:    { label:'Booked',    color:'#16a34a', bg:'#f0fdf4', dot:'&#x1f7e2;' },
+  completed: { label:'Completed', color:'#6b7280', bg:'#f9fafb', dot:'&#x2705;' },
+  lost:      { label:'Lost',      color:'#9ca3af', bg:'#f1f5f9', dot:'&#x2298;' },
+};
+
+const sourceLabels = { website_form:'Form', chat_widget:'Chat', contact_form:'Contact', phone_call:'Call' };
+const trafficLabels = {
+  direct:'Direct / Bookmark', google_search:'Google Search', google_ads:'Google Ads', google_maps:'Google Maps',
+  google:'Google', bing:'Bing', bing_ads:'Bing Ads', duckduckgo:'DuckDuckGo', yahoo:'Yahoo',
+  chatgpt:'ChatGPT', gemini:'Google Gemini', perplexity:'Perplexity AI', claude:'Claude AI', copilot:'Microsoft Copilot',
+  yelp:'Yelp', facebook:'Facebook', facebook_ads:'Facebook Ads', instagram:'Instagram', instagram_ads:'Instagram Ads',
+  nextdoor:'Nextdoor', bbb:'BBB', tiktok:'TikTok', twitter:'X / Twitter', linkedin:'LinkedIn', reddit:'Reddit', referral:'Other Website',
+};
+const trafficIcons = {
+  direct:'&#x1f517;', google_search:'&#x1f50d;', google_ads:'&#x1f4b0;', google_maps:'&#x1f4cd;',
+  google:'&#x1f50d;', bing:'&#x1f50d;', bing_ads:'&#x1f4b0;', chatgpt:'&#x1f916;', gemini:'&#x1f916;',
+  perplexity:'&#x1f916;', claude:'&#x1f916;', copilot:'&#x1f916;', yelp:'&#x2b50;', facebook:'&#x1f464;',
+  facebook_ads:'&#x1f4b0;', instagram:'&#x1f4f7;', instagram_ads:'&#x1f4b0;', nextdoor:'&#x1f3d8;',
+  tiktok:'&#x1f3b5;', referral:'&#x1f310;',
+};
+const paidSources = ['google_ads','facebook_ads','instagram_ads','bing_ads'];
+const aiSources = ['chatgpt','gemini','perplexity','claude','copilot'];
+const periodLabels = { '7d':'this week', '30d':'this month', '90d':'last 90 days', 'all':'all time' };
+const sourceFullLabels = { website_form:'Estimate Form', chat_widget:'Chat Widget', contact_form:'Contact Form', phone_call:'Phone Call' };
+const sourceIcons = { website_form:'&#x1f4cb;', chat_widget:'&#x1f4ac;', contact_form:'&#x2709;', phone_call:'&#x1f4de;' };
+
+function getLeadQuality(lead) {
+  let score = 0;
+  if (lead.phone) score++;
+  if (lead.email) score++;
+  if (lead.service) score++;
+  if (lead.message) score++;
+  if (lead.source === 'website_form' || lead.source === 'contact_form') score++;
+  if (score >= 4) return { label:'High', color:'#16a34a', bg:'#f0fdf4', icon:'&#x1f525;' };
+  if (score >= 2) return { label:'Medium', color:'#d97706', bg:'#fffbeb', icon:'&#x26a1;' };
+  return { label:'Low', color:'#9ca3af', bg:'#f9fafb', icon:'&#x1f4a4;' };
+}
+
+// ── Data fetching ──
+async function fetchData() {
+  if (demo) return;
+  try {
+    const [statsRes, leadsRes] = await Promise.all([
+      fetch(`/api/dashboard/stats?period=${period}`),
+      fetch('/api/dashboard/leads'),
+    ]);
+    if (statsRes.ok) stats = await statsRes.json();
+    if (leadsRes.ok) {
+      const data = await leadsRes.json();
+      if (Array.isArray(data)) {
+        if (!isFirstLoad && prevLeadIds.size > 0) {
+          const newLeads = data.filter(l => !prevLeadIds.has(l.id));
+          if (newLeads.length > 0) {
+            const n = newLeads[0];
+            sendNotification(`${newLeads.length} new lead${newLeads.length > 1 ? 's' : ''}!`, `${n.name} — ${n.service || 'New inquiry'}`);
+          }
+        }
+        prevLeadIds = new Set(data.map(l => l.id));
+        isFirstLoad = false;
+        leads = data;
+      }
+    }
+  } catch (e) { console.error('Fetch error:', e); }
+  render();
+}
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  fetchData();
+  pollInterval = setInterval(fetchData, 15000);
+}
+
+// ── Notifications ──
+function sendNotification(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+// ── API calls ──
+async function updateLead(id, data) {
+  if (demo) {
+    leads = leads.map(l => l.id === id ? { ...l, ...data } : l);
+    render();
+    return;
+  }
+  await fetch('/api/dashboard/leads', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, ...data }),
+  });
+  fetchData();
+}
+
+async function requestReview(id) {
+  if (demo) { leads = leads.map(l => l.id === id ? { ...l, review_sent: true } : l); render(); return; }
+  await fetch('/api/dashboard/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  fetchData();
+}
+
+async function sendSms(leadId, body) {
+  if (demo) return;
+  await fetch('/api/sms/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId, body }) });
+}
+
+async function fetchMessages(leadId) {
+  if (demo) return [];
+  const res = await fetch(`/api/dashboard/messages?leadId=${leadId}`);
+  return res.ok ? await res.json() : [];
+}
+
+// ── Render Functions ──
+function render() {
+  renderMarketing();
+  renderLeads();
+  renderCalendar();
+  renderFollowups();
+  renderLinks();
+  renderAdvanced();
+}
+
+function renderMarketing() {
+  const el = $('#view-marketing');
+  const s = stats;
+  if (!s) { el.innerHTML = '<div class="card" style="text-align:center;padding:3rem"><p style="color:#999">Loading...</p></div>'; return; }
+  const visitors = s.visitors || 0;
+  const visitorsPrev = s.visitorsPrev || 0;
+  const l = s.leads || 0;
+  const lPrev = s.leadsPrev || 0;
+  const conv = visitors > 0 ? Math.round((l / visitors) * 100) : 0;
+  const vDelta = visitors - visitorsPrev;
+  const lDelta = l - lPrev;
+  const per = periodLabels[s.period] || 'this week';
+
+  let trafficHtml = '';
+  if (s.trafficSources && s.trafficSources.length > 0) {
+    trafficHtml = s.trafficSources.map(t => {
+      const pct = visitors > 0 ? Math.round((t.count / visitors) * 100) : 0;
+      const isAI = aiSources.includes(t.source);
+      const isPaid = paidSources.includes(t.source);
+      const barColor = isPaid ? '#16a34a' : isAI ? '#7c3aed' : 'var(--gold)';
+      let badge = '';
+      if (isAI) badge = '<span class="source-badge ai">AI</span>';
+      if (isPaid) badge = '<span class="source-badge paid">Paid</span>';
+      return `<div class="source-row">
+        <div class="source-header">
+          <div class="source-name">${trafficIcons[t.source]||'&#x1f310;'} ${esc(trafficLabels[t.source]||t.source)} ${badge}</div>
+          <div class="source-count"><strong>${t.count}</strong><small>${pct}%</small></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      </div>`;
+    }).join('');
+  } else {
+    trafficHtml = '<p style="text-align:center;color:#999;padding:1.5rem;font-size:13px">No traffic data yet.</p>';
+  }
+
+  let sourcesHtml = '';
+  if (s.sources && s.sources.length > 0) {
+    sourcesHtml = s.sources.sort((a,b) => b.count - a.count).map(src => {
+      const pct = l > 0 ? Math.round((src.count / l) * 100) : 0;
+      return `<div class="source-row">
+        <div class="source-header">
+          <div class="source-name">${sourceIcons[src.source]||'&#x1f4ca;'} ${esc(sourceFullLabels[src.source]||src.source)}</div>
+          <div class="source-count"><strong>${src.count}</strong><small>${pct}%</small></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill gold" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  } else {
+    sourcesHtml = '<p style="text-align:center;color:#999;padding:1.5rem;font-size:13px">No leads yet.</p>';
+  }
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:18px;font-weight:700;color:#111">Marketing Overview</h1>
+      <p style="font-size:13px;color:#999;margin-top:4px">How your website is performing ${per}.</p>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Website Visitors</div>
+        <div class="metric-value">${visitors.toLocaleString()}</div>
+        ${visitorsPrev > 0 ? `<div class="metric-delta ${vDelta >= 0 ? 'up' : 'down'}">${vDelta >= 0 ? '↑' : '↓'} ${Math.abs(vDelta)} vs previous</div>` : ''}
+        <div class="metric-note">People who visited your site</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Leads Generated</div>
+        <div class="metric-value gold">${l}</div>
+        ${lPrev > 0 ? `<div class="metric-delta ${lDelta >= 0 ? 'up' : 'down'}">${lDelta >= 0 ? '↑' : '↓'} ${Math.abs(lDelta)} vs previous</div>` : ''}
+        <div class="metric-note">People who reached out</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Conversion Rate</div>
+        <div class="metric-value">${conv}%</div>
+        <div class="progress-bar"><div class="progress-fill gold" style="width:${Math.min(conv,100)}%"></div></div>
+        <div class="metric-note" style="margin-top:8px">Visitors who became leads</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">How People Find You</div>
+      <div class="card-sub">Traffic sources ${per}</div>
+      ${trafficHtml}
+    </div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Where Your Leads Come From</div>
+      <div class="card-sub">Breakdown by source ${per}</div>
+      ${sourcesHtml}
+    </div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Quick Stats</div>
+      <div class="quick-stats" style="margin-top:1rem">
+        <div class="quick-stat"><div class="num">${s.totalLeads||0}</div><div class="label">Total leads all time</div></div>
+        <div class="quick-stat"><div class="num">${s.formLeads||0}</div><div class="label">From estimate form</div></div>
+        <div class="quick-stat"><div class="num">${s.chatLeads||0}</div><div class="label">From chat widget</div></div>
+        <div class="quick-stat"><div class="num">${s.contactLeads||0}</div><div class="label">From contact form</div></div>
+      </div>
+    </div>
+    <div class="tip"><span>&#x1f4c8;</span><p><strong>Pro tip:</strong> A conversion rate above 5% is great for a local service business. If it drops, your site might need fresh content or faster load times.</p></div>
+  `;
+}
+
+function renderLeads() {
+  const el = $('#view-leads');
+  const s = stats;
+  const bookedAndCompleted = (s?.booked || 0) + (s?.completed || 0);
+  const totalL = s?.totalLeads || 0;
+  const closeRate = totalL > 0 ? Math.round((bookedAndCompleted / totalL) * 100) : 0;
+  const lostCount = leads.filter(l => l.status === 'lost').length;
+
+  const filtered = statusFilter === 'all'
+    ? leads.filter(l => !['completed','lost'].includes(l.status))
+    : leads.filter(l => l.status === statusFilter);
+
+  const total = filtered.length;
+  const paginated = pageSize === 0 ? filtered : filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const totalPages = pageSize === 0 ? 1 : Math.ceil(total / pageSize);
+
+  const filters = [
+    { value:'all', label:'Pipeline', count: leads.filter(l => !['completed','lost'].includes(l.status)).length },
+    { value:'hot', label:'&#x1f534; Hot', count: s?.hot||0 },
+    { value:'active', label:'&#x1f7e1; Active', count: s?.active||0 },
+    { value:'booked', label:'&#x1f7e2; Booked', count: s?.booked||0 },
+    { value:'completed', label:'&#x2705; Done', count: s?.completed||0 },
+    { value:'lost', label:'&#x2298; Lost', count: lostCount },
+  ];
+
+  const nextStatus = { hot:'active', active:'booked', booked:'completed' };
+  const nextLabel = { hot:'Mark Contacted', active:'Book', booked:'Complete' };
+
+  let leadsHtml = '';
+  if (total === 0) {
+    leadsHtml = `<div style="padding:2.5rem;text-align:center;color:#999;font-size:13px">${statusFilter === 'all' ? "No active leads — they'll show up here when customers reach out." : `No ${statusFilter} leads right now.`}</div>`;
+  } else {
+    leadsHtml = paginated.map(lead => {
+      const cfg = statusConfig[lead.status] || statusConfig.hot;
+      const q = getLeadQuality(lead);
+      const appt = lead.appointment_at ? new Date(lead.appointment_at) : null;
+      return `<div class="lead-item">
+        <div class="lead-top">
+          <div class="lead-info">
+            <span style="font-size:13px">${cfg.dot}</span>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="lead-name">${esc(lead.name)}</span>
+                <span class="lead-quality" style="background:${q.bg};color:${q.color}">${q.icon} ${q.label}</span>
+              </div>
+              <div class="lead-detail">${esc(lead.service||lead.vehicle||'General inquiry')} · ${sourceLabels[lead.source]||lead.source}${lead.referral ? ' · via '+esc(lead.referral) : ''}${lead.email ? ' · '+esc(lead.email) : ''}</div>
+            </div>
+          </div>
+          <div class="lead-right">
+            <span class="status-badge" style="background:${cfg.bg};color:${cfg.color}">${cfg.label}</span>
+            <span class="lead-time">${timeAgo(lead.created_at)}</span>
+          </div>
+        </div>
+        <div class="lead-notes">
+          <button class="lead-notes-btn" onclick="editNotes('${lead.id}')">${lead.notes ? '&#x1f4dd; '+esc(lead.notes) : '+ Add note'}</button>
+        </div>
+        <div class="lead-actions">
+          <button class="action-btn" onclick="showProfile('${lead.id}')">&#x1f464; Profile</button>
+          <a href="tel:${esc(lead.phone)}" class="action-btn primary">&#x1f4de; Call</a>
+          <button class="action-btn" onclick="toggleConvo('${lead.id}')">&#x1f4ac; Message</button>
+          ${lead.status !== 'completed' && lead.status !== 'lost' ? `<button class="action-btn green" onclick="${lead.status === 'active' ? `showBooking('${lead.id}')` : `updateLead('${lead.id}',{status:'${nextStatus[lead.status]}'})`}">${nextLabel[lead.status]}</button>` : ''}
+          ${lead.status === 'booked' && appt ? `<span style="font-size:12px;color:#999;padding:5px">&#x1f4c5; ${appt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'America/Los_Angeles'})} at ${appt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'})}</span>` : ''}
+          ${!['completed','lost'].includes(lead.status) ? `<button class="action-btn danger" onclick="confirmLost('${lead.id}')">&#x2715; Lost</button>` : ''}
+          ${lead.status === 'completed' && !lead.review_sent ? `<button class="action-btn amber" onclick="requestReview('${lead.id}')">&#x2b50; Request Review</button>` : ''}
+          ${lead.status === 'completed' && lead.review_sent ? '<span style="font-size:12px;color:#999;padding:5px">&#x2713; Review requested</span>' : ''}
+        </div>
+        <div id="convo-${lead.id}" class="hidden"></div>
+      </div>`;
+    }).join('');
+  }
+
+  let paginationHtml = '';
+  if (total > 10) {
+    paginationHtml = `<div class="pagination">
+      <div class="page-sizes">
+        <span>Show</span>
+        ${[10,25,50,0].map(sz => `<button class="page-size-btn ${pageSize===sz?'active':''}" onclick="pageSize=${sz};page=0;render()">${sz===0?'All':sz}</button>`).join('')}
+      </div>
+      ${pageSize > 0 && totalPages > 1 ? `<div class="page-nav">
+        <span>${page*pageSize+1}–${Math.min((page+1)*pageSize,total)} of ${total}</span>
+        <button ${page===0?'disabled':''} onclick="page--;render()">‹</button>
+        <button ${page>=totalPages-1?'disabled':''} onclick="page++;render()">›</button>
+      </div>` : ''}
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="quick-stats">
+        <div class="quick-stat"><div class="num">${s?.visitors||0}</div><div class="label">visited your site</div></div>
+        <div class="quick-stat"><div class="num gold" style="color:var(--gold)">${s?.leads||0}</div><div class="label">contacted you</div></div>
+        <div class="quick-stat"><div class="num" style="color:#16a34a">${bookedAndCompleted}</div><div class="label">booked / done</div></div>
+        <div class="quick-stat"><div class="num">${closeRate}%</div><div class="label">close rate</div></div>
+      </div>
+    </div>
+    ${(s?.hot||0) > 0 ? `<div class="alert red"><span style="font-size:16px">&#x1f534;</span><p><strong>${s.hot} hot lead${s.hot>1?'s':''}</strong> waiting for follow-up</p></div>` : ''}
+    <div class="card" style="padding:0;margin-bottom:1.5rem">
+      <div class="pipeline-filters">
+        ${filters.map(f => `<button class="filter-btn ${statusFilter===f.value?'active':''}" onclick="statusFilter='${f.value}';page=0;render()">${f.label} <span style="opacity:0.6">${f.count}</span></button>`).join('')}
+      </div>
+      ${leadsHtml}
+      ${paginationHtml}
+    </div>
+    <div class="tip"><span>&#x1f4a1;</span><p><strong>Tip:</strong> Click Profile to see full contact info, notes, messages, and status.</p></div>
+  `;
+}
+
+function renderCalendar() {
+  const el = $('#view-calendar');
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = now.getDate();
+
+  const bookedLeads = leads.filter(l => l.appointment_at && ['booked','active'].includes(l.status));
+
+  let daysHtml = '';
+  // Day headers
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    daysHtml += `<div class="cal-day-header">${d}</div>`;
+  });
+  // Empty cells before month start
+  for (let i = 0; i < firstDay; i++) {
+    daysHtml += '<div class="cal-day other-month"></div>';
+  }
+  // Days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today;
+    const dayDate = new Date(year, month, d);
+    const dayLeads = bookedLeads.filter(l => {
+      const a = new Date(l.appointment_at);
+      return a.getFullYear() === year && a.getMonth() === month && a.getDate() === d;
+    });
+    const events = dayLeads.map(l => {
+      const cfg = statusConfig[l.status] || statusConfig.hot;
+      return `<div class="cal-event" style="background:${cfg.bg};color:${cfg.color}" title="${esc(l.name)} - ${esc(l.service||'')}">${esc(l.name.split(' ')[0])}</div>`;
+    }).join('');
+    daysHtml += `<div class="cal-day ${isToday?'today':''}"><div class="cal-day-num">${d}</div>${events}</div>`;
+  }
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:18px;font-weight:700;color:#111">Calendar</h1>
+      <p style="font-size:13px;color:#999;margin-top:4px">Upcoming appointments</p>
+    </div>
+    <div class="card">
+      <div class="cal-header">
+        <div class="cal-nav">
+          <span style="font-size:15px;font-weight:600">${monthName}</span>
+        </div>
+      </div>
+      <div class="cal-grid">${daysHtml}</div>
+    </div>
+  `;
+}
+
+function renderFollowups() {
+  const el = $('#view-followups');
+  const completedLeads = leads.filter(l => l.status === 'completed');
+  const needReview = completedLeads.filter(l => !l.review_sent);
+  const sentReview = completedLeads.filter(l => l.review_sent);
+
+  const templates = [
+    { label:'Review Request', icon:'&#x2b50;', msg: l => `Hi ${l.name.split(' ')[0]}! Thank you for choosing Haus of Wraps. We hope your ${l.service||'wrap'} turned out amazing! If you have a moment, we'd really appreciate a quick review:\n\nhttps://www.yelp.com/biz/haus-of-wraps-san-diego\n\nThank you!\n— The Haus of Wraps Team` },
+    { label:'Check-in', icon:'&#x1f44b;', msg: l => `Hi ${l.name.split(' ')[0]}! Just checking in — how's your ${l.service||'wrap'} holding up? If you ever need anything, we're here for you!\n\n— Haus of Wraps` },
+    { label:'Referral', icon:'&#x1f91d;', msg: l => `Hi ${l.name.split(' ')[0]}! If you know anyone looking for a wrap, PPF, or tint, we'd love the referral! We offer a referral bonus for every new customer you send our way.\n\n— Haus of Wraps` },
+  ];
+
+  let followupsHtml = '';
+  if (needReview.length === 0 && sentReview.length === 0) {
+    followupsHtml = '<div style="padding:2.5rem;text-align:center;color:#999;font-size:13px">No completed jobs yet. Follow-ups will appear here after services are marked complete.</div>';
+  } else {
+    if (needReview.length > 0) {
+      followupsHtml += '<div class="card-title" style="padding:1rem 1.25rem 0.5rem">Due</div>';
+      followupsHtml += needReview.map(l => `<div class="followup-item">
+        <div class="followup-info">
+          <h4>${esc(l.name)}</h4>
+          <p>${esc(l.service||'Wrap service')} · ${esc(l.vehicle||'')} · ${timeAgo(l.created_at)}</p>
+        </div>
+        <div class="followup-actions">
+          ${templates.map((t,i) => `<button class="action-btn" onclick="sendFollowup('${l.id}',${i})">${t.icon} ${t.label}</button>`).join('')}
+        </div>
+      </div>`).join('');
+    }
+    if (sentReview.length > 0) {
+      followupsHtml += '<div class="card-title" style="padding:1rem 1.25rem 0.5rem;margin-top:0.5rem">Sent</div>';
+      followupsHtml += sentReview.map(l => `<div class="followup-item">
+        <div class="followup-info">
+          <h4>${esc(l.name)}</h4>
+          <p>${esc(l.service||'Wrap service')} · &#x2713; Review requested</p>
+        </div>
+      </div>`).join('');
+    }
+  }
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:18px;font-weight:700;color:#111">Follow-ups</h1>
+      <p style="font-size:13px;color:#999;margin-top:4px">Automated review requests and check-ins</p>
+    </div>
+    <div class="card" style="padding:0">${followupsHtml}</div>
+  `;
+
+  // Store templates globally for sendFollowup
+  window._followupTemplates = templates;
+}
+
+function renderLinks() {
+  const el = $('#view-links');
+  const pages = [
+    { label:'Home', path:'/' }, { label:'Contact', path:'/contact' }, { label:'Gallery', path:'/gallery' },
+    { label:'Tesla', path:'/tesla' }, { label:'PPF', path:'/ppf' }, { label:'Services', path:'/services' },
+    { label:'Visualizer', path:'/visualizer' },
+  ];
+  const presets = [
+    { label:'Google Business', value:'google-business' }, { label:'Yelp', value:'yelp' },
+    { label:'Facebook', value:'facebook' }, { label:'Instagram', value:'instagram' },
+    { label:'Nextdoor', value:'nextdoor' }, { label:'Business Card', value:'business-card' },
+    { label:'Flyer', value:'flyer' }, { label:'Email', value:'email' },
+  ];
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:18px;font-weight:700;color:#111">Link Generator</h1>
+      <p style="font-size:13px;color:#999;margin-top:4px">Create trackable links for any marketing channel.</p>
+    </div>
+    <div class="card">
+      <div style="margin-bottom:1rem">
+        <label style="font-size:12px;font-weight:500;color:#374151;margin-bottom:4px;display:block">Landing Page</label>
+        <select id="link-page" class="topbar-select" style="width:100%;padding:8px 12px">
+          ${pages.map(p => `<option value="${p.path}">${p.label} (${p.path})</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:12px;font-weight:500;color:#374151;margin-bottom:4px;display:block">Source</label>
+        <select id="link-source" class="topbar-select" style="width:100%;padding:8px 12px">
+          ${presets.map(p => `<option value="${p.value}">${p.label}</option>`).join('')}
+          <option value="custom">Custom...</option>
+        </select>
+      </div>
+      <div id="link-custom-row" class="hidden" style="margin-bottom:1rem">
+        <label style="font-size:12px;font-weight:500;color:#374151;margin-bottom:4px;display:block">Custom Source</label>
+        <input type="text" id="link-custom" placeholder="e.g. partner-shop" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid #e5e5e5;border-radius:8px;font-family:var(--font)">
+      </div>
+      <button class="action-btn primary" onclick="generateLink()" style="width:100%;justify-content:center;padding:10px">Generate Link</button>
+      <div id="link-result"></div>
+      <div style="margin-top:1rem;padding:0.75rem;background:#fafafa;border-radius:8px">
+        <p style="font-size:12px;color:#999">These links use URL parameters (no cookies) to track which channel each visitor came from. You'll see the data in your Marketing tab.</p>
+      </div>
+    </div>
+  `;
+
+  // Show/hide custom input
+  $('#link-source').addEventListener('change', () => {
+    $('#link-custom-row').classList.toggle('hidden', $('#link-source').value !== 'custom');
+  });
+}
+
+function renderAdvanced() {
+  const el = $('#view-advanced');
+  const s = stats;
+  if (!s) { el.innerHTML = '<div class="card" style="text-align:center;padding:3rem"><p style="color:#999">Loading...</p></div>'; return; }
+
+  const visitors = s.visitors || 0;
+  const l = s.leads || 0;
+  const booked = s.booked || 0;
+  const completed = s.completed || 0;
+  const conv = visitors > 0 ? Math.round((l / visitors) * 100) : 0;
+  const closeRate = l > 0 ? Math.round(((booked + completed) / l) * 100) : 0;
+  const maxFunnel = Math.max(visitors, 1);
+
+  const stages = [
+    { label:'Visitors', count: visitors, color:'#6b7280' },
+    { label:'Leads', count: l, color:'var(--gold)' },
+    { label:'Booked', count: booked, color:'#16a34a' },
+    { label:'Completed', count: completed, color:'#2563eb' },
+  ];
+
+  el.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:18px;font-weight:700;color:#111">Advanced Analytics</h1>
+      <p style="font-size:13px;color:#999;margin-top:4px">Conversion funnel and deep insights</p>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Visitors</div><div class="metric-value">${visitors.toLocaleString()}</div></div>
+      <div class="metric-card"><div class="metric-label">Leads</div><div class="metric-value gold">${l}</div></div>
+      <div class="metric-card"><div class="metric-label">Booked</div><div class="metric-value" style="color:#16a34a">${booked}</div></div>
+      <div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value">${completed}</div></div>
+      <div class="metric-card"><div class="metric-label">Conversion</div><div class="metric-value">${conv}%</div></div>
+      <div class="metric-card"><div class="metric-label">Close Rate</div><div class="metric-value">${closeRate}%</div></div>
+    </div>
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-title">Conversion Funnel</div>
+      <div class="card-sub">From visitor to completed job</div>
+      <div class="funnel">
+        ${stages.map(st => {
+          const pct = Math.max(Math.round((st.count / maxFunnel) * 100), 3);
+          return `<div class="funnel-stage">
+            <div class="funnel-label">${st.label}</div>
+            <div class="funnel-bar" style="width:${pct}%;background:${st.color}">${st.count}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ── Interaction Handlers ──
+function editNotes(id) {
+  const lead = leads.find(l => l.id === id);
+  const note = prompt('Notes:', lead?.notes || '');
+  if (note !== null) updateLead(id, { notes: note });
+}
+
+function confirmLost(id) {
+  const lead = leads.find(l => l.id === id);
+  if (lead && confirm(`Mark ${lead.name} as lost?`)) updateLead(id, { status: 'lost' });
+}
+
+function showBooking(id) {
+  const lead = leads.find(l => l.id === id);
+  if (!lead) return;
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-overlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3>Book Appointment</h3><button class="modal-close" onclick="closeModal()">&#x2715;</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#666;margin-bottom:1rem">Schedule <strong>${esc(lead.name)}</strong>${lead.service ? ' for '+esc(lead.service) : ''}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem">
+          <div><label>Date</label><input type="date" id="book-date" min="${new Date().toISOString().split('T')[0]}"></div>
+          <div><label>Time</label><select id="book-time">${Array.from({length:22},(_, i) => { const h = 8+Math.floor(i/2); const m = i%2===0?'00':'30'; const v = `${String(h).padStart(2,'0')}:${m}`; const l = `${h>12?h-12:h}:${m} ${h>=12?'PM':'AM'}`; return `<option value="${v}">${l}</option>`; }).join('')}</select></div>
+        </div>
+        <div><label>Note <span style="color:#999;font-weight:400">(optional)</span></label><textarea id="book-note" rows="2" placeholder="Drop-off time, special requests...">${esc(lead.notes||'')}</textarea></div>
+        <div class="modal-actions">
+          <button onclick="closeModal()">Cancel</button>
+          <button class="btn-confirm" style="background:#16a34a;border-color:#16a34a" onclick="doBook('${lead.id}')">Book</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function doBook(id) {
+  const date = $('#book-date').value;
+  const time = $('#book-time').value;
+  const note = $('#book-note').value;
+  if (!date) { alert('Please select a date'); return; }
+  const dt = `${date}T${time}:00`;
+  const data = { status: 'booked', appointment_at: dt };
+  if (note) data.notes = note;
+  updateLead(id, data);
+  closeModal();
+}
+
+function showProfile(id) {
+  const lead = leads.find(l => l.id === id);
+  if (!lead) return;
+  const cfg = statusConfig[lead.status] || statusConfig.hot;
+  const created = new Date(lead.created_at);
+  const dateStr = created.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric', timeZone:'America/Los_Angeles' });
+  const appt = lead.appointment_at ? new Date(lead.appointment_at) : null;
+
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-overlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar">${lead.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+          <div>
+            <div style="font-size:14px;font-weight:600">${esc(lead.name)}</div>
+            <div style="font-size:11px;color:#999">${sourceFullLabels[lead.source]||lead.source} · ${dateStr}</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:1.25rem">
+          <a href="tel:${esc(lead.phone)}" class="action-btn primary" style="flex:1;text-align:center">&#x1f4de; Call</a>
+          <a href="sms:${esc(lead.phone)}" class="action-btn" style="flex:1;text-align:center">&#x1f4f1; Text</a>
+          ${lead.email ? `<a href="mailto:${esc(lead.email)}" class="action-btn" style="flex:1;text-align:center">&#x2709; Email</a>` : ''}
+        </div>
+
+        ${lead.status === 'booked' && appt ? `
+        <div class="profile-section">
+          <h4>Appointment</h4>
+          <div style="padding:1rem;border-radius:12px;border:2px solid #bbf7d0;background:#f0fdf4">
+            <div style="font-size:14px;font-weight:600;color:#111">${appt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'America/Los_Angeles'})}</div>
+            <div style="font-size:13px;color:#666;margin-top:2px">${appt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'})}</div>
+          </div>
+        </div>` : ''}
+
+        <div class="profile-section">
+          <h4>Contact</h4>
+          <div class="profile-field"><div class="field-label">Phone</div><a href="tel:${esc(lead.phone)}" style="font-size:13px;font-weight:500;color:var(--gold)">${esc(lead.phone)}</a></div>
+          <div class="profile-field"><div class="field-label">Email</div><div class="${lead.email?'field-value':'field-placeholder'}">${lead.email?esc(lead.email):'+ Add email'}</div></div>
+        </div>
+
+        <div class="profile-section">
+          <h4>Inquiry</h4>
+          <div class="profile-field"><div class="field-label">Service</div><div class="${lead.service?'field-value':'field-placeholder'}">${lead.service?esc(lead.service):'+ Add'}</div></div>
+          <div class="profile-field"><div class="field-label">Vehicle</div><div class="${lead.vehicle?'field-value':'field-placeholder'}">${lead.vehicle?esc(lead.vehicle):'+ Add'}</div></div>
+          ${lead.message ? `<div class="profile-field"><div class="field-label">Message</div><div class="field-value">${esc(lead.message)}</div></div>` : ''}
+        </div>
+
+        <div class="profile-section">
+          <h4>Status</h4>
+          <div class="status-btns">
+            ${['hot','active','booked','completed','lost'].map(s => {
+              const sc = statusConfig[s];
+              return `<button class="status-btn ${lead.status===s?'active':''}" style="background:${sc.bg};color:${sc.color}" onclick="updateLead('${lead.id}',{status:'${s}'});closeModal()">${sc.label}</button>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h4>Notes</h4>
+          <div class="profile-field" onclick="closeModal();editNotes('${lead.id}')">
+            <div class="${lead.notes?'field-value':'field-placeholder'}">${lead.notes?esc(lead.notes):'+ Add notes...'}</div>
+          </div>
+        </div>
+
+        ${lead.status === 'completed' ? `
+        <div class="profile-section">
+          <h4>Review</h4>
+          ${lead.review_sent
+            ? '<div style="padding:0.75rem;border-radius:12px;background:#f0fdf4;font-size:13px;color:#15803d">&#x2713; Review request sent</div>'
+            : `<button class="action-btn amber" style="width:100%;text-align:center;padding:10px" onclick="requestReview('${lead.id}');closeModal()">&#x2b50; Send Review Request</button>`
+          }
+        </div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleConvo(id) {
+  const el = document.getElementById('convo-' + id);
+  if (!el) return;
+  if (!el.classList.contains('hidden')) {
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.remove('hidden');
+  const lead = leads.find(l => l.id === id);
+
+  const smsTemplates = [
+    { label:'Confirm Appt', msg:`Hi ${lead.name.split(' ')[0]}! Just confirming your appointment at Haus of Wraps. See you soon!` },
+    { label:'Ready', msg:`Hi ${lead.name.split(' ')[0]}! Your vehicle is ready for pickup. We can't wait for you to see it!` },
+    { label:'Quote', msg:`Hi ${lead.name.split(' ')[0]}! Here's your estimate for ${lead.service||'your wrap'}. Let me know if you have any questions!` },
+    { label:'Thank You', msg:`Hi ${lead.name.split(' ')[0]}! Thank you for choosing Haus of Wraps. We loved working on your ${lead.vehicle||'vehicle'}!` },
+  ];
+
+  el.innerHTML = `<div class="sms-thread">
+    <div class="sms-messages" id="msgs-${id}"><div style="text-align:center;color:#999;font-size:12px;padding:1rem">Loading messages...</div></div>
+    <div class="sms-templates">${smsTemplates.map((t,i) => `<button class="sms-template" onclick="document.getElementById('sms-input-${id}').value=window._smsTemplates['${id}'][${i}].msg">${t.label}</button>`).join('')}</div>
+    <div class="sms-input-row">
+      <input type="text" class="sms-input" id="sms-input-${id}" placeholder="Type a message..." onkeydown="if(event.key==='Enter')doSendSms('${id}')">
+      <button class="sms-send" onclick="doSendSms('${id}')">Send</button>
+    </div>
+  </div>`;
+
+  window._smsTemplates = window._smsTemplates || {};
+  window._smsTemplates[id] = smsTemplates;
+
+  loadMessages(id);
+}
+
+async function loadMessages(leadId) {
+  const msgs = await fetchMessages(leadId);
+  const el = document.getElementById('msgs-' + leadId);
+  if (!el) return;
+  if (msgs.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:#999;font-size:12px;padding:1rem">No messages yet</div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const t = new Date(m.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    return `<div><div class="sms-bubble ${m.direction}">${esc(m.body)}</div><div class="sms-time" style="text-align:${m.direction==='outbound'?'right':'left'}">${t}</div></div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function doSendSms(leadId) {
+  const input = document.getElementById('sms-input-' + leadId);
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  await sendSms(leadId, text);
+  loadMessages(leadId);
+}
+
+function sendFollowup(leadId, templateIdx) {
+  const lead = leads.find(l => l.id === leadId);
+  if (!lead) return;
+  const template = window._followupTemplates[templateIdx];
+  const msg = template.msg(lead);
+  if (confirm(`Send "${template.label}" to ${lead.name}?\n\n${msg.substring(0,100)}...`)) {
+    sendSms(leadId, msg);
+    if (templateIdx === 0) requestReview(leadId);
+    alert('Sent!');
+  }
+}
+
+function generateLink() {
+  const page = $('#link-page').value;
+  const sourceVal = $('#link-source').value;
+  const custom = $('#link-custom')?.value || '';
+  const source = sourceVal === 'custom' ? (custom || 'custom') : sourceVal;
+  const baseUrl = 'https://www.hausofwraps.com';
+  const url = `${baseUrl}${page}?ref=${encodeURIComponent(source)}`;
+  const result = $('#link-result');
+  result.innerHTML = `<div class="link-result">
+    <div class="link-url">${esc(url)}</div>
+    <button class="copy-btn" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copied!'">Copy Link</button>
+  </div>`;
+}
+
+function closeModal() { $('#modal-root').innerHTML = ''; }
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  // View switching
+  $$('.topbar-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.topbar-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentView = btn.dataset.view;
+      ['marketing','leads','calendar','followups','links','advanced'].forEach(v => {
+        $(`#view-${v}`).classList.toggle('hidden', v !== currentView);
+      });
+    });
+  });
+
+  // Period selector
+  $('#period-select').addEventListener('change', e => {
+    period = e.target.value;
+    if (!demo) fetchData();
+  });
+
+  // Demo toggle
+  $('#demo-toggle').addEventListener('click', () => {
+    demo = !demo;
+    $('#demo-toggle').classList.toggle('on', demo);
+    $('#demo-toggle').textContent = demo ? '📊 Demo' : 'Demo';
+    $('#demo-banner').classList.toggle('hidden', !demo);
+    if (demo) {
+      stats = sampleStats;
+      leads = sampleLeads;
+      render();
+    } else {
+      fetchData();
+    }
+  });
+
+  // Notifications
+  if ('Notification' in window && Notification.permission === 'default') {
+    $('#notif-banner').classList.remove('hidden');
+    $('#enable-notif').addEventListener('click', async () => {
+      await Notification.requestPermission();
+      $('#notif-banner').classList.add('hidden');
+    });
+  }
+
+  // Start
+  startPolling();
+});
+</script>
+</body>
+</html>
