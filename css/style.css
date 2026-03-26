@@ -37,18 +37,18 @@ ul { list-style: none; }
 .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
 
 /* === Top Bar === */
-.top-bar { background: var(--black); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0.5rem 0; font-size: 12px; color: var(--gray-400); }
+.top-bar { background: var(--black); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0.6rem 0; font-size: 13px; color: var(--white); }
 .top-bar .container { display: flex; align-items: center; justify-content: space-between; }
-.top-bar-info { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
-.top-bar-info a { color: var(--gray-400); transition: color 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+.top-bar-info { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; }
+.top-bar-info a { color: rgba(255,255,255,0.85); transition: color 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500; }
 .top-bar-info a:hover { color: var(--white); }
-.top-bar-socials { display: flex; gap: 1rem; align-items: center; }
-.top-bar-socials a { color: var(--gray-400); transition: color 0.2s; display: flex; }
+.top-bar-socials { display: flex; gap: 1.25rem; align-items: center; }
+.top-bar-socials a { color: rgba(255,255,255,0.85); transition: color 0.2s; display: flex; }
 .top-bar-socials a:hover { color: var(--white); }
-.top-bar-socials svg { width: 16px; height: 16px; }
+.top-bar-socials svg { width: 20px; height: 20px; }
 
 /* === Header === */
-.header { position: fixed; top: 36px; left: 0; right: 0; z-index: 100; padding: 1rem 0; transition: all 0.3s; }
+.header { position: fixed; top: 40px; left: 0; right: 0; z-index: 100; padding: 1rem 0; transition: all 0.3s; }
 .header.scrolled { background: rgba(11, 21, 38, 0.95); backdrop-filter: blur(12px); padding: 0.6rem 0; box-shadow: 0 2px 20px rgba(0,0,0,0.3); top: 0; }
 .header .container { display: flex; align-items: center; justify-content: space-between; }
 .header-logo img { height: 36px; }
@@ -288,7 +288,7 @@ select.form-field option { background: var(--navy); }
 @media (max-width: 900px) {
   .top-bar-info { gap: 1rem; }
   .top-bar-info .tb-address { display: none; }
-  .header { top: 36px; }
+  .header { top: 40px; }
   .header.scrolled { top: 0; }
   .nav-links { display: none; }
   .hamburger { display: block; }
