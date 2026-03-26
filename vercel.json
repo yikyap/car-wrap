@@ -34,25 +34,10 @@
     "api/lead.js": {
       "maxDuration": 15
     },
-    "api/track.js": {
-      "maxDuration": 10
-    },
-    "api/dashboard/stats.js": {
+    "api/dashboard.js": {
       "maxDuration": 15
     },
-    "api/dashboard/leads.js": {
-      "maxDuration": 10
-    },
-    "api/dashboard/messages.js": {
-      "maxDuration": 10
-    },
-    "api/dashboard/review.js": {
-      "maxDuration": 15
-    },
-    "api/sms/inbound.js": {
-      "maxDuration": 10
-    },
-    "api/sms/reply.js": {
+    "api/sms.js": {
       "maxDuration": 15
     }
   },

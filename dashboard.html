@@ -392,8 +392,8 @@ async function fetchData() {
   if (demo) return;
   try {
     const [statsRes, leadsRes] = await Promise.all([
-      fetch(`/api/dashboard/stats?period=${period}`),
-      fetch('/api/dashboard/leads'),
+      fetch(`/api/dashboard?action=stats&period=${period}`),
+      fetch('/api/dashboard?action=leads'),
     ]);
     if (statsRes.ok) stats = await statsRes.json();
     if (leadsRes.ok) {
@@ -435,7 +435,7 @@ async function updateLead(id, data) {
     render();
     return;
   }
-  await fetch('/api/dashboard/leads', {
+  await fetch('/api/dashboard?action=leads', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, ...data }),
@@ -445,18 +445,18 @@ async function updateLead(id, data) {
 
 async function requestReview(id) {
   if (demo) { leads = leads.map(l => l.id === id ? { ...l, review_sent: true } : l); render(); return; }
-  await fetch('/api/dashboard/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  await fetch('/api/dashboard?action=review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
   fetchData();
 }
 
 async function sendSms(leadId, body) {
   if (demo) return;
-  await fetch('/api/sms/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId, body }) });
+  await fetch('/api/sms?action=reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId, body }) });
 }
 
 async function fetchMessages(leadId) {
   if (demo) return [];
-  const res = await fetch(`/api/dashboard/messages?leadId=${leadId}`);
+  const res = await fetch(`/api/dashboard?action=messages&leadId=${leadId}`);
   return res.ok ? await res.json() : [];
 }
 

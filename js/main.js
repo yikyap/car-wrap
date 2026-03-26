@@ -181,7 +181,7 @@ if (form) {
 (function trackPageView() {
   try {
     const params = new URLSearchParams(window.location.search);
-    fetch('/api/track', {
+    fetch('/api/lead?action=track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
