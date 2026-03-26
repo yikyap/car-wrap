@@ -1,7 +1,10 @@
 // === Sticky header ===
 const header = document.querySelector('.header');
+const topBar = document.querySelector('.top-bar');
 window.addEventListener('scroll', () => {
-  header.classList.toggle('scrolled', window.scrollY > 60);
+  const scrolled = window.scrollY > 60;
+  header.classList.toggle('scrolled', scrolled);
+  if (topBar) topBar.style.transform = scrolled ? 'translateY(-100%)' : '';
 });
 
 // === Mobile menu ===
