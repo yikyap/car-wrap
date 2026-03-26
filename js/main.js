@@ -1,10 +1,7 @@
 // === Sticky header ===
 const header = document.querySelector('.header');
-const topBar = document.querySelector('.top-bar');
 window.addEventListener('scroll', () => {
-  const scrolled = window.scrollY > 60;
-  header.classList.toggle('scrolled', scrolled);
-  if (topBar) topBar.style.transform = scrolled ? 'translateY(-100%)' : '';
+  header.classList.toggle('scrolled', window.scrollY > 60);
 });
 
 // === Mobile menu ===
@@ -106,6 +103,14 @@ if (expandBtn && quoteSection) {
       if (barData.service) {
         const serviceSelect = fullForm.querySelector('[name="service"]');
         if (serviceSelect) serviceSelect.value = barData.service;
+      }
+      if (barData.year || barData.make || barData.model) {
+        const vehicleInput = fullForm.querySelector('[name="vehicle"]');
+        if (vehicleInput) vehicleInput.value = [barData.year, barData.make, barData.model].filter(Boolean).join(' ');
+      }
+      if (barData.year) {
+        const yearInput = fullForm.querySelector('[name="year"]');
+        if (yearInput) yearInput.value = barData.year;
       }
     }
     setTimeout(() => quoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
