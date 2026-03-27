@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS leads (
   notes TEXT,
   review_sent BOOLEAN NOT NULL DEFAULT FALSE,
   review_sent_at TIMESTAMPTZ,
+  image_url TEXT,
   review_followup BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

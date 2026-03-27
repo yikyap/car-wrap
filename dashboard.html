@@ -608,7 +608,7 @@ function renderLeads() {
       return `<div class="lead-item">
         <div class="lead-top">
           <div class="lead-info">
-            <span style="font-size:13px">${cfg.dot}</span>
+            ${lead.image_url ? `<img src="${lead.image_url}" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid #f0f0f0" loading="lazy">` : `<span style="font-size:13px">${cfg.dot}</span>`}
             <div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="lead-name">${esc(lead.name)}</span>
@@ -953,6 +953,14 @@ function showProfile(id) {
           <a href="sms:${esc(lead.phone)}" class="action-btn" style="flex:1;text-align:center">&#x1f4f1; Text</a>
           ${lead.email ? `<a href="mailto:${esc(lead.email)}" class="action-btn" style="flex:1;text-align:center">&#x2709; Email</a>` : ''}
         </div>
+
+        ${lead.image_url ? `
+        <div class="profile-section">
+          <h4>Visualizer Preview</h4>
+          <div style="border-radius:12px;overflow:hidden;border:1px solid #f0f0f0">
+            <img src="${lead.image_url}" alt="Wrap preview" style="width:100%;display:block;border-radius:12px" loading="lazy">
+          </div>
+        </div>` : ''}
 
         ${lead.status === 'booked' && appt ? `
         <div class="profile-section">

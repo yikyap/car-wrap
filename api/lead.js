@@ -64,10 +64,30 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { name, phone, email, service, vehicle, message, source, referral } = req.body;
+    const { name, phone, email, service, vehicle, message, source, referral, visualizer_image } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
 
     const sb = getClient();
+
+    // Upload visualizer image to Supabase storage if provided
+    let image_url = null;
+    if (visualizer_image && visualizer_image.startsWith('data:')) {
+      try {
+        const base64 = visualizer_image.split(',')[1];
+        const buffer = Buffer.from(base64, 'base64');
+        const filename = `leads/${Date.now()}-${phone.replace(/\D/g,'')}.jpg`;
+        const { data: uploadData, error: uploadErr } = await sb.storage
+          .from('visualizer-images')
+          .upload(filename, buffer, { contentType: 'image/jpeg', upsert: true });
+        if (!uploadErr && uploadData) {
+          const { data: urlData } = sb.storage.from('visualizer-images').getPublicUrl(filename);
+          image_url = urlData?.publicUrl || null;
+        }
+      } catch (imgErr) {
+        console.error('Image upload failed:', imgErr);
+      }
+    }
+
     const { error } = await sb.from('leads').insert({
       name,
       phone,
@@ -77,6 +97,7 @@ module.exports = async (req, res) => {
       message: message || null,
       source: source || 'website_form',
       referral: referral || null,
+      image_url,
       status: 'hot',
     });
 

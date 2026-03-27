@@ -1531,8 +1531,7 @@ function showFinalConfirmation() {
   yesBtn.textContent = 'Looks perfect!';
   yesBtn.onclick = () => {
     btns.remove();
-    addMessage('Ready to get a quote? Drop your contact info and we\'ll reach out!', 'bot');
-    chatHistory.push({ role: 'model', parts: [{ text: 'Ready for a quote?' }] });
+    showQuoteForm();
   };
   const noBtn = document.createElement('button');
   noBtn.className = 'confirm-btn no';
@@ -1556,6 +1555,83 @@ function showFinalConfirmation() {
   msg.appendChild(btns);
   chatMessages.appendChild(msg);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// === Quote Form (captures lead + visualizer image) ===
+function getVisualizerImage() {
+  try {
+    const activeSlide = document.querySelector('.slide.active canvas');
+    if (activeSlide) return activeSlide.toDataURL('image/jpeg', 0.85);
+  } catch (e) {}
+  return null;
+}
+
+function showQuoteForm() {
+  lockInput('Fill out the form below...');
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.innerHTML = '<div style="margin-bottom:8px">Love it! Drop your info and we\'ll get you a quote:</div>';
+  const form = document.createElement('div');
+  form.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:4px;';
+  const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:#222;color:#fff;font-size:13px;font-family:inherit;width:100%;outline:none;';
+  const vehicle = getBadgeLabel() || '';
+  const services = [];
+  if (selectedServices.has('wrap')) services.push('Car Wrap' + (st.color ? ' - ' + st.color.name : ''));
+  if (selectedServices.has('tint')) services.push('Window Tint');
+  if (selectedServices.has('powder')) services.push('Powder Coating');
+
+  form.innerHTML = `
+    <input type="text" id="quote-name" placeholder="Your name" style="${inputStyle}">
+    <input type="tel" id="quote-phone" placeholder="Phone number" style="${inputStyle}">
+    <input type="email" id="quote-email" placeholder="Email (optional)" style="${inputStyle}">
+    <div style="padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:#1a1a1a;font-size:12px;color:#888;">
+      <div style="color:#aaa;font-weight:500">${vehicle || 'Your vehicle'}</div>
+      <div style="margin-top:2px">${services.join(', ') || 'Custom services'}</div>
+    </div>
+    <button id="quote-submit" style="padding:10px;border-radius:8px;background:#fff;color:#000;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:2px;">Get My Quote</button>
+  `;
+  msg.appendChild(form);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  document.getElementById('quote-submit').onclick = async () => {
+    const name = document.getElementById('quote-name').value.trim();
+    const phone = document.getElementById('quote-phone').value.trim();
+    const email = document.getElementById('quote-email').value.trim();
+    if (!name || !phone) { alert('Please enter your name and phone number'); return; }
+
+    const btn = document.getElementById('quote-submit');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    // Capture the current visualizer image
+    const imageData = getVisualizerImage();
+    const urlParams = new URLSearchParams(window.location.search);
+
+    try {
+      await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          email: email || null,
+          service: services.join(', ') || null,
+          vehicle: vehicle || null,
+          message: null,
+          source: 'chat_widget',
+          referral: urlParams.get('ref') || null,
+          visualizer_image: imageData || null,
+        }),
+      });
+      // Replace form with success
+      msg.innerHTML = '<div>Thanks, <strong>' + name.split(' ')[0] + '</strong>! We\'ll reach out shortly with your quote. 🙌</div>';
+      addMessage('In the meantime, feel free to keep exploring different colors!', 'bot');
+    } catch (e) {
+      btn.textContent = 'Error — try again';
+      btn.disabled = false;
+    }
+  };
 }
 
 // === Init ===
