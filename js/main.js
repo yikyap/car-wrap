@@ -82,38 +82,45 @@ const quoteSection = document.getElementById('quote-form-section');
 const quoteClose = document.getElementById('quote-form-close');
 const estimateBarForm = document.getElementById('estimate-bar-form');
 
-if (expandBtn && quoteSection) {
-  expandBtn.addEventListener('click', () => {
-    quoteSection.classList.add('open');
-    // Pre-fill full form from inline bar values
-    const fullForm = document.getElementById('contact-form');
-    if (fullForm && estimateBarForm) {
-      const barData = Object.fromEntries(new FormData(estimateBarForm));
-      if (barData.fullname) {
-        const parts = barData.fullname.trim().split(/\s+/);
-        const firstInput = fullForm.querySelector('[name="firstName"]');
-        const lastInput = fullForm.querySelector('[name="lastName"]');
-        if (firstInput) firstInput.value = parts[0] || '';
-        if (lastInput) lastInput.value = parts.slice(1).join(' ') || '';
+if (expandBtn && estimateBarForm) {
+  expandBtn.addEventListener('click', async () => {
+    const barData = Object.fromEntries(new FormData(estimateBarForm));
+    const name = (barData.fullname || '').trim();
+    const phone = (barData.phone || '').trim();
+    if (!name || !phone) { alert('Please enter your name and phone number'); return; }
+
+    const origText = expandBtn.textContent;
+    expandBtn.textContent = 'Sending...';
+    expandBtn.disabled = true;
+
+    const vehicle = [barData.year, barData.make, barData.model].filter(Boolean).join(' ');
+    const urlParams = new URLSearchParams(window.location.search);
+
+    try {
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          email: null,
+          service: barData.service || null,
+          vehicle: vehicle || null,
+          message: null,
+          source: 'website_form',
+          referral: urlParams.get('ref') || null,
+        }),
+      });
+      if (res.ok) {
+        expandBtn.textContent = 'Sent! We\'ll reach out shortly';
+        estimateBarForm.reset();
+      } else {
+        throw new Error('Failed');
       }
-      if (barData.phone) {
-        const phoneInput = fullForm.querySelector('[name="phone"]');
-        if (phoneInput) phoneInput.value = barData.phone;
-      }
-      if (barData.service) {
-        const serviceSelect = fullForm.querySelector('[name="service"]');
-        if (serviceSelect) serviceSelect.value = barData.service;
-      }
-      if (barData.year || barData.make || barData.model) {
-        const vehicleInput = fullForm.querySelector('[name="vehicle"]');
-        if (vehicleInput) vehicleInput.value = [barData.year, barData.make, barData.model].filter(Boolean).join(' ');
-      }
-      if (barData.year) {
-        const yearInput = fullForm.querySelector('[name="year"]');
-        if (yearInput) yearInput.value = barData.year;
-      }
+    } catch (err) {
+      expandBtn.textContent = 'Error — try again';
     }
-    setTimeout(() => quoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    setTimeout(() => { expandBtn.textContent = origText; expandBtn.disabled = false; }, 4000);
   });
 }
 
