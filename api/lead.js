@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { name, phone, email, service, vehicle, message, source, referral, visualizer_image } = req.body;
+    const { name, phone, email, service, vehicle, message, source, referral, visualizer_image, visualizer_config } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Name and phone are required' });
 
     const sb = getClient();
@@ -98,6 +98,7 @@ module.exports = async (req, res) => {
       source: source || 'website_form',
       referral: referral || null,
       image_url,
+      visualizer_config: visualizer_config || null,
       status: 'hot',
     });
 

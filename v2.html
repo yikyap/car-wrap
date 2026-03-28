@@ -1576,9 +1576,22 @@ function showQuoteForm() {
   const inputStyle = 'padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:#222;color:#fff;font-size:13px;font-family:inherit;width:100%;outline:none;';
   const vehicle = getBadgeLabel() || '';
   const services = [];
-  if (selectedServices.has('wrap')) services.push('Car Wrap' + (st.color ? ' - ' + st.color.name : ''));
-  if (selectedServices.has('tint')) services.push('Window Tint');
-  if (selectedServices.has('powder')) services.push('Powder Coating');
+  const vizConfig = {};
+  if (selectedServices.has('wrap')) {
+    services.push('Car Wrap' + (st.color ? ' - ' + st.color.name : ''));
+    vizConfig.wrap_color = st.color ? st.color.name : null;
+    vizConfig.wrap_finish = st.finish ? st.finish.name : null;
+  }
+  if (selectedServices.has('tint')) {
+    const tintPct = carMetadata?.tint_level || null;
+    services.push('Window Tint' + (tintPct ? ' (' + tintPct + ')' : ''));
+    vizConfig.tint_level = tintPct;
+  }
+  if (selectedServices.has('powder')) {
+    const powderColor = carMetadata?.wheel_color || null;
+    services.push('Powder Coating' + (powderColor ? ' - ' + powderColor : ''));
+    vizConfig.powder_color = powderColor;
+  }
 
   form.innerHTML = `
     <input type="text" id="quote-name" placeholder="Your name" style="${inputStyle}">
@@ -1622,6 +1635,7 @@ function showQuoteForm() {
           source: 'chat_widget',
           referral: urlParams.get('ref') || null,
           visualizer_image: imageData || null,
+          visualizer_config: Object.keys(vizConfig).length > 0 ? vizConfig : null,
         }),
       });
       // Replace form with success

@@ -954,12 +954,20 @@ function showProfile(id) {
           ${lead.email ? `<a href="mailto:${esc(lead.email)}" class="action-btn" style="flex:1;text-align:center">&#x2709; Email</a>` : ''}
         </div>
 
-        ${lead.image_url ? `
+        ${lead.image_url || lead.visualizer_config ? `
         <div class="profile-section">
           <h4>Visualizer Preview</h4>
-          <div style="border-radius:12px;overflow:hidden;border:1px solid #f0f0f0">
+          ${lead.image_url ? `<div style="border-radius:12px;overflow:hidden;border:1px solid #f0f0f0;margin-bottom:8px">
             <img src="${lead.image_url}" alt="Wrap preview" style="width:100%;display:block;border-radius:12px" loading="lazy">
-          </div>
+          </div>` : ''}
+          ${lead.visualizer_config ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${
+            [
+              lead.visualizer_config.wrap_color ? '<span style="font-size:12px;padding:4px 10px;border-radius:6px;background:#f3f4f6;color:#374151;font-weight:500">&#x1f3a8; '+esc(lead.visualizer_config.wrap_color)+'</span>' : '',
+              lead.visualizer_config.wrap_finish ? '<span style="font-size:12px;padding:4px 10px;border-radius:6px;background:#f3f4f6;color:#374151;font-weight:500">&#x2728; '+esc(lead.visualizer_config.wrap_finish)+'</span>' : '',
+              lead.visualizer_config.tint_level ? '<span style="font-size:12px;padding:4px 10px;border-radius:6px;background:#f3f4f6;color:#374151;font-weight:500">&#x1f576; Tint '+esc(lead.visualizer_config.tint_level)+'</span>' : '',
+              lead.visualizer_config.powder_color ? '<span style="font-size:12px;padding:4px 10px;border-radius:6px;background:#f3f4f6;color:#374151;font-weight:500">&#x2699; Wheels: '+esc(lead.visualizer_config.powder_color)+'</span>' : '',
+            ].filter(Boolean).join('')
+          }</div>` : ''}
         </div>` : ''}
 
         ${lead.status === 'booked' && appt ? `

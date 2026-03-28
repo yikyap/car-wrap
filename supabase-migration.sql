@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS leads (
   review_sent BOOLEAN NOT NULL DEFAULT FALSE,
   review_sent_at TIMESTAMPTZ,
   image_url TEXT,
+  visualizer_config JSONB,
   review_followup BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
