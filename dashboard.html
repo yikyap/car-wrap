@@ -1015,10 +1015,18 @@ function showProfile(id) {
         <div class="profile-section">
           <h4>Inquiry</h4>
           ${lead.vehicle ? `<div style="font-size:14px;font-weight:600;color:#111;margin-bottom:10px">${esc(lead.vehicle)}</div>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:6px${lead.message ? ';margin-bottom:10px' : ''}">
-            ${lead.service ? lead.service.split(',').map(s => s.trim()).filter(Boolean).map(s =>
-              `<span style="font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid #e5e7eb;color:#374151;font-weight:500;background:#fff">${esc(s)}</span>`
-            ).join('') : '<span style="font-size:12px;color:#ccc">No services specified</span>'}
+          <div style="display:flex;flex-direction:column;gap:0${lead.message ? ';margin-bottom:10px' : ''}">
+            ${lead.service ? lead.service.split(',').map(s => s.trim()).filter(Boolean).map(s => {
+              const lower = s.toLowerCase();
+              let color = '#6b7280';
+              if (lower.includes('wrap') || lower.includes('color change')) color = '#2563eb';
+              else if (lower.includes('tint') || lower.includes('window')) color = '#7c3aed';
+              else if (lower.includes('ppf') || lower.includes('protection')) color = '#059669';
+              else if (lower.includes('powder') || lower.includes('wheel')) color = '#d97706';
+              else if (lower.includes('chrome')) color = '#6b7280';
+              else if (lower.includes('ceramic')) color = '#0891b2';
+              return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5"><span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span><span style="font-size:13px;color:#374151;font-weight:500">${esc(s)}</span></div>`;
+            }).join('') : '<div style="font-size:12px;color:#ccc;padding:8px 0">No services specified</div>'}
           </div>
           ${lead.message ? `<div style="font-size:12px;color:#999;padding:8px 10px;background:#fafafa;border-radius:8px;border:1px solid #f0f0f0">"${esc(lead.message)}"</div>` : ''}
         </div>
