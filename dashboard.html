@@ -1014,9 +1014,13 @@ function showProfile(id) {
 
         <div class="profile-section">
           <h4>Inquiry</h4>
-          <div class="profile-field"><div class="field-label">Service</div><div class="${lead.service?'field-value':'field-placeholder'}">${lead.service?esc(lead.service):'+ Add'}</div></div>
-          <div class="profile-field"><div class="field-label">Vehicle</div><div class="${lead.vehicle?'field-value':'field-placeholder'}">${lead.vehicle?esc(lead.vehicle):'+ Add'}</div></div>
-          ${lead.message ? `<div class="profile-field"><div class="field-label">Message</div><div class="field-value">${esc(lead.message)}</div></div>` : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            ${lead.service ? lead.service.split(',').map(s => s.trim()).filter(Boolean).map(s =>
+              `<span style="font-size:12px;padding:5px 12px;border-radius:20px;background:#f3f4f6;color:#374151;font-weight:500">${esc(s)}</span>`
+            ).join('') : '<span style="font-size:12px;color:#ccc">No services specified</span>'}
+          </div>
+          ${lead.vehicle ? `<div style="font-size:13px;color:#666;margin-bottom:4px">&#x1f697; ${esc(lead.vehicle)}</div>` : ''}
+          ${lead.message ? `<div style="font-size:12px;color:#999;margin-top:6px;padding:8px 10px;background:#fafafa;border-radius:8px;border:1px solid #f0f0f0">"${esc(lead.message)}"</div>` : ''}
         </div>
 
         <div class="profile-section">
