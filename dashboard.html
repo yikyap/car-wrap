@@ -724,11 +724,19 @@ function renderCalendar() {
       return a.getFullYear() === calYear && a.getMonth() === calMonth && a.getDate() === calSelectedDay;
     }).sort((a, b) => new Date(a.appointment_at) - new Date(b.appointment_at));
 
+    // Helper to get hour in local timezone
+    function getLocalHour(dateStr) {
+      const d = new Date(dateStr);
+      return parseInt(d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: false }));
+    }
+
     // Build hourly slots 7 AM - 6 PM
     let slotsHtml = '';
+    const placed = new Set();
     for (let h = 7; h <= 18; h++) {
       const label = h > 12 ? (h - 12) + ' PM' : (h === 12 ? '12 PM' : h + ' AM');
-      const slotLeads = dayLeads.filter(l => new Date(l.appointment_at).getHours() === h);
+      const slotLeads = dayLeads.filter(l => getLocalHour(l.appointment_at) === h);
+      slotLeads.forEach(l => placed.add(l.id));
       const appts = slotLeads.map(l => {
         const cfg = statusConfig[l.status] || statusConfig.hot;
         const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
@@ -747,6 +755,26 @@ function renderCalendar() {
         <div style="width:60px;font-size:11px;color:#999;padding-top:4px;text-align:right;flex-shrink:0">${label}</div>
         <div style="flex:1;display:flex;flex-direction:column;gap:4px">${appts}</div>
       </div>`;
+    }
+
+    // Show any appointments that didn't land in 7-6 range
+    const unplaced = dayLeads.filter(l => !placed.has(l.id));
+    if (unplaced.length > 0) {
+      const uAppts = unplaced.map(l => {
+        const cfg = statusConfig[l.status] || statusConfig.hot;
+        const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return `<div onclick="showProfile('${l.id}')" style="padding:8px 12px;border-radius:8px;background:${cfg.bg};border-left:3px solid ${cfg.color};cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:600;color:#111">${esc(l.name)}</span>
+            <span style="font-size:11px;color:#999">${time}</span>
+          </div>
+          <div style="font-size:12px;color:#666;margin-top:2px">${esc(l.service || l.vehicle || 'Appointment')}</div>
+        </div>`;
+      }).join('');
+      slotsHtml = `<div style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0">
+        <div style="width:60px;font-size:11px;color:#999;padding-top:4px;text-align:right;flex-shrink:0">Other</div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">${uAppts}</div>
+      </div>` + slotsHtml;
     }
 
     // Summary at top
