@@ -149,7 +149,7 @@ a { color: inherit; text-decoration: none; }
 .sms-template:hover { background: #fafafa; }
 
 /* Calendar */
-.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
 .cal-nav { display: flex; align-items: center; gap: 0.75rem; }
 .cal-nav button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e5e5; background: #fff; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .cal-nav span { font-size: 15px; font-weight: 600; color: #111; min-width: 160px; text-align: center; }
@@ -703,40 +703,98 @@ function renderLeads() {
   `;
 }
 
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calSelectedDay = null; // null = month view, number = day view
+
 function renderCalendar() {
   const el = $('#view-calendar');
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = now.getDate();
+  const todayY = now.getFullYear(), todayM = now.getMonth(), todayD = now.getDate();
+  const monthName = new Date(calYear, calMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const bookedLeads = leads.filter(l => l.appointment_at && ['booked','active'].includes(l.status));
+  const bookedLeads = leads.filter(l => l.appointment_at && ['booked','active','hot'].includes(l.status));
+
+  if (calSelectedDay !== null) {
+    // === Day View ===
+    const dayDate = new Date(calYear, calMonth, calSelectedDay);
+    const dayStr = dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const dayLeads = bookedLeads.filter(l => {
+      const a = new Date(l.appointment_at);
+      return a.getFullYear() === calYear && a.getMonth() === calMonth && a.getDate() === calSelectedDay;
+    }).sort((a, b) => new Date(a.appointment_at) - new Date(b.appointment_at));
+
+    // Build hourly slots 7 AM - 6 PM
+    let slotsHtml = '';
+    for (let h = 7; h <= 18; h++) {
+      const label = h > 12 ? (h - 12) + ' PM' : (h === 12 ? '12 PM' : h + ' AM');
+      const slotLeads = dayLeads.filter(l => new Date(l.appointment_at).getHours() === h);
+      const appts = slotLeads.map(l => {
+        const cfg = statusConfig[l.status] || statusConfig.hot;
+        const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+        return `<div onclick="showProfile('${l.id}')" style="padding:8px 12px;border-radius:8px;background:${cfg.bg};border-left:3px solid ${cfg.color};cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:600;color:#111">${esc(l.name)}</span>
+            <span style="font-size:11px;color:#999">${time}</span>
+          </div>
+          <div style="font-size:12px;color:#666;margin-top:2px">${esc(l.service || l.vehicle || 'Appointment')}</div>
+          ${l.vehicle ? `<div style="font-size:11px;color:#999;margin-top:1px">${esc(l.vehicle)}</div>` : ''}
+          ${l.notes ? `<div style="font-size:11px;color:#aaa;margin-top:3px;font-style:italic">${esc(l.notes)}</div>` : ''}
+        </div>`;
+      }).join('');
+
+      slotsHtml += `<div style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0">
+        <div style="width:60px;font-size:11px;color:#999;padding-top:4px;text-align:right;flex-shrink:0">${label}</div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">${appts}</div>
+      </div>`;
+    }
+
+    // Summary at top
+    const count = dayLeads.length;
+
+    el.innerHTML = `
+      <div style="margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h1 style="font-size:18px;font-weight:700;color:#111">Calendar</h1>
+          <p style="font-size:13px;color:#999;margin-top:4px">${dayStr}</p>
+        </div>
+        <button class="action-btn" onclick="calSelectedDay=null;renderCalendar()">&#x2190; Month</button>
+      </div>
+      ${count > 0 ? `<div class="card" style="margin-bottom:1rem;padding:1rem;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--primary-dark)">${count}</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:#111">${count} appointment${count !== 1 ? 's' : ''}</div>
+          <div style="font-size:12px;color:#999">Click any appointment to view details</div>
+        </div>
+      </div>` : `<div class="card" style="margin-bottom:1rem;padding:2rem;text-align:center;color:#999;font-size:13px">No appointments scheduled for this day</div>`}
+      <div class="card" style="padding:0.75rem 1rem">${slotsHtml}</div>
+    `;
+    return;
+  }
+
+  // === Month View ===
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
   let daysHtml = '';
-  // Day headers
   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
     daysHtml += `<div class="cal-day-header">${d}</div>`;
   });
-  // Empty cells before month start
   for (let i = 0; i < firstDay; i++) {
     daysHtml += '<div class="cal-day other-month"></div>';
   }
-  // Days
   for (let d = 1; d <= daysInMonth; d++) {
-    const isToday = d === today;
-    const dayDate = new Date(year, month, d);
+    const isToday = d === todayD && calMonth === todayM && calYear === todayY;
     const dayLeads = bookedLeads.filter(l => {
       const a = new Date(l.appointment_at);
-      return a.getFullYear() === year && a.getMonth() === month && a.getDate() === d;
+      return a.getFullYear() === calYear && a.getMonth() === calMonth && a.getDate() === d;
     });
-    const events = dayLeads.map(l => {
+    const events = dayLeads.slice(0, 3).map(l => {
       const cfg = statusConfig[l.status] || statusConfig.hot;
       return `<div class="cal-event" style="background:${cfg.bg};color:${cfg.color}" title="${esc(l.name)} - ${esc(l.service||'')}">${esc(l.name.split(' ')[0])}</div>`;
     }).join('');
-    daysHtml += `<div class="cal-day ${isToday?'today':''}"><div class="cal-day-num">${d}</div>${events}</div>`;
+    const more = dayLeads.length > 3 ? `<div style="font-size:9px;color:#999;text-align:center">+${dayLeads.length - 3} more</div>` : '';
+    daysHtml += `<div class="cal-day ${isToday?'today':''}" onclick="calSelectedDay=${d};renderCalendar()" style="cursor:pointer"><div class="cal-day-num">${d}</div>${events}${more}</div>`;
   }
 
   el.innerHTML = `
@@ -747,8 +805,11 @@ function renderCalendar() {
     <div class="card">
       <div class="cal-header">
         <div class="cal-nav">
+          <button onclick="calMonth--;if(calMonth<0){calMonth=11;calYear--}renderCalendar()">&#x2039;</button>
           <span style="font-size:15px;font-weight:600">${monthName}</span>
+          <button onclick="calMonth++;if(calMonth>11){calMonth=0;calYear++}renderCalendar()">&#x203a;</button>
         </div>
+        <button class="action-btn" style="font-size:11px" onclick="calYear=${todayY};calMonth=${todayM};renderCalendar()">Today</button>
       </div>
       <div class="cal-grid">${daysHtml}</div>
     </div>
