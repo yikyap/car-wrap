@@ -133,6 +133,11 @@ ul { list-style: none; }
 .service-card:hover .service-card-img img { transform: scale(1.06); }
 .service-card-body { padding: 1.5rem 1.75rem 1.75rem; }
 .service-icon { width: 48px; height: 48px; background: rgba(212,168,50,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-size: 22px; }
+.service-card > .service-icon,
+.service-card > h3,
+.service-card > p { margin-left: 1.75rem; margin-right: 1.75rem; }
+.service-card > .service-icon { margin-top: 1.5rem; }
+.service-card > p:last-child { margin-bottom: 1.75rem; }
 .service-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 0.75rem; }
 .service-card p { font-size: 14px; color: var(--gray-400); line-height: 1.6; }
 
@@ -264,7 +269,7 @@ select.form-field option { background: var(--navy); }
 }
 
 /* === Page Banner === */
-.page-banner { padding: 6rem 0 2.5rem; background: var(--navy); text-align: center; }
+.page-banner { padding: 7rem 0 3rem; background: var(--navy); text-align: center; }
 .page-banner h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; }
 .page-banner p { color: var(--gray-400); margin-top: 0.75rem; font-size: 16px; }
 
