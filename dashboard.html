@@ -730,28 +730,31 @@ function renderCalendar() {
       return parseInt(d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: false }));
     }
 
-    // Build hourly slots 7 AM - 6 PM
+    // Build hourly slots 7 AM - 6 PM with drag-and-drop
     let slotsHtml = '';
     const placed = new Set();
+
+    function apptCard(l) {
+      const cfg = statusConfig[l.status] || statusConfig.hot;
+      const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `<div draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${l.id}')" onclick="showProfile('${l.id}')" style="padding:8px 12px;border-radius:8px;background:${cfg.bg};border-left:3px solid ${cfg.color};cursor:grab;transition:all 0.15s;user-select:none" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600;color:#111">${esc(l.name)}</span>
+          <span style="font-size:11px;color:#999">${time}</span>
+        </div>
+        <div style="font-size:12px;color:#666;margin-top:2px">${esc(l.service || l.vehicle || 'Appointment')}</div>
+        ${l.vehicle ? `<div style="font-size:11px;color:#999;margin-top:1px">${esc(l.vehicle)}</div>` : ''}
+        ${l.notes ? `<div style="font-size:11px;color:#aaa;margin-top:3px;font-style:italic">${esc(l.notes)}</div>` : ''}
+      </div>`;
+    }
+
     for (let h = 7; h <= 18; h++) {
       const label = h > 12 ? (h - 12) + ' PM' : (h === 12 ? '12 PM' : h + ' AM');
       const slotLeads = dayLeads.filter(l => getLocalHour(l.appointment_at) === h);
       slotLeads.forEach(l => placed.add(l.id));
-      const appts = slotLeads.map(l => {
-        const cfg = statusConfig[l.status] || statusConfig.hot;
-        const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
-        return `<div onclick="showProfile('${l.id}')" style="padding:8px 12px;border-radius:8px;background:${cfg.bg};border-left:3px solid ${cfg.color};cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:600;color:#111">${esc(l.name)}</span>
-            <span style="font-size:11px;color:#999">${time}</span>
-          </div>
-          <div style="font-size:12px;color:#666;margin-top:2px">${esc(l.service || l.vehicle || 'Appointment')}</div>
-          ${l.vehicle ? `<div style="font-size:11px;color:#999;margin-top:1px">${esc(l.vehicle)}</div>` : ''}
-          ${l.notes ? `<div style="font-size:11px;color:#aaa;margin-top:3px;font-style:italic">${esc(l.notes)}</div>` : ''}
-        </div>`;
-      }).join('');
+      const appts = slotLeads.map(apptCard).join('');
 
-      slotsHtml += `<div style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0">
+      slotsHtml += `<div class="cal-slot" data-hour="${h}" ondragover="event.preventDefault();this.style.background='#fdf8e8'" ondragleave="this.style.background=''" ondrop="handleSlotDrop(event,${h})" style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0;border-radius:6px;transition:background 0.15s">
         <div style="width:60px;font-size:11px;color:#999;padding-top:4px;text-align:right;flex-shrink:0">${label}</div>
         <div style="flex:1;display:flex;flex-direction:column;gap:4px">${appts}</div>
       </div>`;
@@ -760,18 +763,8 @@ function renderCalendar() {
     // Show any appointments that didn't land in 7-6 range
     const unplaced = dayLeads.filter(l => !placed.has(l.id));
     if (unplaced.length > 0) {
-      const uAppts = unplaced.map(l => {
-        const cfg = statusConfig[l.status] || statusConfig.hot;
-        const time = new Date(l.appointment_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        return `<div onclick="showProfile('${l.id}')" style="padding:8px 12px;border-radius:8px;background:${cfg.bg};border-left:3px solid ${cfg.color};cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;font-weight:600;color:#111">${esc(l.name)}</span>
-            <span style="font-size:11px;color:#999">${time}</span>
-          </div>
-          <div style="font-size:12px;color:#666;margin-top:2px">${esc(l.service || l.vehicle || 'Appointment')}</div>
-        </div>`;
-      }).join('');
-      slotsHtml = `<div style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0">
+      const uAppts = unplaced.map(apptCard).join('');
+      slotsHtml = `<div class="cal-slot" data-hour="0" ondragover="event.preventDefault();this.style.background='#fdf8e8'" ondragleave="this.style.background=''" style="display:flex;gap:12px;min-height:48px;border-bottom:1px solid #f5f5f5;padding:6px 0;border-radius:6px;transition:background 0.15s">
         <div style="width:60px;font-size:11px;color:#999;padding-top:4px;text-align:right;flex-shrink:0">Other</div>
         <div style="flex:1;display:flex;flex-direction:column;gap:4px">${uAppts}</div>
       </div>` + slotsHtml;
@@ -996,6 +989,25 @@ function renderAdvanced() {
 }
 
 // ── Interaction Handlers ──
+function handleSlotDrop(event, targetHour) {
+  event.preventDefault();
+  event.currentTarget.style.background = '';
+  const leadId = event.dataTransfer.getData('text/plain');
+  if (!leadId) return;
+  const lead = leads.find(l => l.id === leadId);
+  if (!lead || !lead.appointment_at) return;
+
+  // Build new appointment time keeping the same date but changing the hour
+  const oldDate = new Date(lead.appointment_at);
+  const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(calSelectedDay).padStart(2, '0')}`;
+  const newDt = `${dateStr}T${String(targetHour).padStart(2, '0')}:00:00`;
+
+  const targetLabel = targetHour > 12 ? (targetHour - 12) + ' PM' : (targetHour === 12 ? '12 PM' : targetHour + ' AM');
+  if (confirm(`Move ${lead.name} to ${targetLabel}?`)) {
+    updateLead(leadId, { appointment_at: newDt });
+  }
+}
+
 function editNotes(id) {
   const lead = leads.find(l => l.id === id);
   const note = prompt('Notes:', lead?.notes || '');
