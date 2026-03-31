@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wrap Visualizer — AI Advisor</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; height: 100vh; padding: 1.5rem; display: flex; flex-direction: column; }
+.top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+h1 { font-size: 22px; font-weight: 500; }
+.sub { font-size: 13px; color: #888; margin-bottom: 1.25rem; }
+.layout { display: grid; grid-template-columns: 1fr 380px; gap: 1.25rem; align-items: start; flex: 1; min-height: 0; }
+.carousel { background: #111; border-radius: 14px; overflow: hidden; position: relative; aspect-ratio: 16/10; }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.5s; }
+.slide.active { opacity: 1; }
+.slide canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+.arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 10; transition: background 0.15s; backdrop-filter: blur(4px); }
+.arrow:hover { background: rgba(0,0,0,0.8); }
+.arrow-l { left: 12px; }
+.arrow-r { right: 12px; }
+.dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.2s; padding: 0; }
+.dot.active { background: #fff; transform: scale(1.2); }
+.badge { position: absolute; bottom: 12px; left: 14px; background: rgba(0,0,0,0.75); border: 1px solid rgba(212,168,50,0.25); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: rgba(255,255,255,0.9); z-index: 10; backdrop-filter: blur(8px); letter-spacing: 0.3px; font-weight: 500; }
+.loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 16px; backdrop-filter: blur(6px); }
+.spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: #999; text-align: center; line-height: 1.5; }
+.loading-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.08); z-index: 25; }
+.loading-progress-bar { height: 100%; background: linear-gradient(90deg, #D4A832, #E0BE55); width: 0%; transition: width 0.6s ease; border-radius: 0 2px 2px 0; }
+.loading-step { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; }
+
+/* Chat panel */
+.chat-panel { display: flex; flex-direction: column; background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 14px; height: 100%; max-height: calc(100vh - 6rem); overflow: hidden; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 10px; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+.msg { max-width: 85%; padding: 9px 13px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
+.msg.user { align-self: flex-end; background: #333; border-bottom-right-radius: 4px; }
+.msg.bot { align-self: flex-start; background: #222; border-bottom-left-radius: 4px; color: #ddd; }
+.msg.bot .action-tag { display: inline-block; background: #2a3a2a; color: #8c8; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
+.confirm-btns { display: flex; gap: 8px; margin-top: 8px; }
+.confirm-btn { padding: 7px 18px; border-radius: 8px; border: none; font-size: 12px; font-family: inherit; cursor: pointer; transition: opacity 0.15s; }
+.confirm-btn.yes { background: #fff; color: #000; }
+.confirm-btn.no { background: #333; color: #fff; }
+.confirm-btn:hover { opacity: 0.8; }
+.confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.palette-section { padding: 10px 0; text-align: center; }
+.palette-title { font-size: 12px; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.chat-palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 340px; margin: 0 auto; }
+.palette-item { text-align: center; opacity: 0; transform: translateY(10px); animation: swatchReveal 0.3s ease forwards; }
+.chat-swatch { width: 100%; aspect-ratio: 1; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.chat-swatch:hover { transform: scale(1.18); border-color: rgba(255,255,255,0.6); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.chat-swatch-label { font-size: 9px; color: #777; margin-top: 4px; line-height: 1.15; }
+.chat-custom-color { max-width: 340px; margin: 12px auto 0; font-size: 11px; color: #777; text-align: center; cursor: pointer; padding: 8px; border: 1px dashed #444; border-radius: 8px; transition: all 0.15s; opacity: 0; animation: swatchReveal 0.3s ease forwards; animation-delay: 0.7s; }
+.chat-custom-color:hover { color: #ccc; border-color: #666; background: rgba(255,255,255,0.03); }
+@keyframes swatchReveal { to { opacity: 1; transform: translateY(0); } }
+
+.service-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.service-btn { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #222; border: 1.5px solid #333; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+.service-btn:hover { border-color: #555; background: #2a2a2a; }
+.service-btn.selected { border-color: #fff; background: #2a2a2a; }
+.service-check { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid #555; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; color: transparent; }
+.service-btn.selected .service-check { border-color: #fff; background: #fff; color: #000; }
+.service-info { flex: 1; }
+.service-name { font-size: 13px; font-weight: 500; color: #fff; }
+.service-desc { font-size: 10px; color: #777; margin-top: 2px; }
+.service-continue { width: 100%; padding: 10px; font-size: 13px; font-weight: 500; border-radius: 8px; background: #fff; color: #000; border: none; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; font-family: inherit; }
+.service-continue:hover { opacity: 0.85; }
+.service-continue:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.tint-grid { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.tint-option { padding: 8px 14px; border-radius: 8px; border: 1.5px solid #333; background: #222; cursor: pointer; text-align: center; transition: all 0.15s; }
+.tint-option:hover { border-color: #555; }
+.tint-option .tint-pct { font-size: 14px; font-weight: 500; color: #fff; }
+.tint-option .tint-label { font-size: 9px; color: #777; margin-top: 2px; }
+
+.powder-palette { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; max-width: 300px; }
+.powder-swatch { width: 100%; aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+.powder-swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,0.5); }
+.powder-label { font-size: 9px; color: #777; text-align: center; margin-top: 3px; }
+.typing { align-self: flex-start; padding: 12px 16px; }
+.typing span { display: inline-block; width: 6px; height: 6px; background: #555; border-radius: 50%; animation: typingDot 1.4s infinite; margin-right: 3px; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; margin-right: 0; }
+@keyframes typingDot { 0%,60%,100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+
+.chat-input-area { padding: 0.75rem; border-top: 0.5px solid #2a2a2a; display: flex; gap: 8px; align-items: center; }
+.chat-input { flex: 1; background: #111; border: 0.5px solid #333; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; font-family: inherit; outline: none; resize: none; min-height: 40px; max-height: 100px; }
+.chat-input:focus { border-color: #555; }
+.chat-input::placeholder { color: #555; }
+.chat-input:disabled { opacity: 0.4; cursor: not-allowed; }
+.chat-file-label { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: #666; transition: all 0.15s; flex-shrink: 0; }
+.chat-file-label:hover { color: #aaa; background: #222; }
+.chat-send { width: 36px; height: 36px; border-radius: 8px; background: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s; }
+.chat-send:hover { opacity: 0.85; }
+.chat-send:disabled { opacity: 0.3; cursor: not-allowed; }
+.file-preview { padding: 0 0.75rem; }
+.file-preview-inner { display: flex; align-items: center; gap: 6px; background: #222; padding: 6px 10px; border-radius: 8px; font-size: 11px; color: #8c8; }
+.file-preview-inner button { background: none; border: none; color: #666; cursor: pointer; font-size: 14px; padding: 0 2px; }
+
+/* === Mobile layout === */
+@media (max-width: 800px) {
+  body { padding: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  h1, .sub { display: none; }
+  .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 0; }
+
+  /* Carousel: always visible on top, fixed height */
+  .carousel { border-radius: 0; flex: 0 0 auto; height: 35vh; overflow: hidden; }
+
+  /* Chat panel: always visible below, fills rest */
+  .chat-panel { border-radius: 0; border: none; flex: 1; max-height: none; min-height: 0; overflow: hidden; background: #141414; }
+  .chat-messages { padding: 0.75rem; }
+
+  /* Hide unused elements */
+  .sheet-handle { display: none !important; }
+  .chat-toggle-bar { display: none !important; }
+
+  .msg { font-size: 14px; max-width: 90%; }
+  .chat-input-area { padding: 0.5rem 0.75rem; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)); }
+  .chat-input { font-size: 16px; border-radius: 20px; padding: 10px 16px; background: #1e1e1e; border: 1px solid #2a2a2a; }
+  .chat-input:focus { border-color: #444; }
+  .chat-send { border-radius: 50%; width: 38px; height: 38px; }
+  .chat-palette { max-width: 100%; gap: 8px; }
+  .chat-swatch-label { font-size: 8px; }
+  .powder-palette { max-width: 100%; }
+  .service-btn { padding: 10px 12px; }
+  .confirm-btns { flex-wrap: wrap; }
+  .tint-grid { justify-content: center; }
+}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h1>Wrap Visualizer — AI Advisor</h1>
+</div>
+<p class="sub">Chat with our AI to explore wrap options for your car</p>
+<div class="layout">
+  <div class="carousel" id="carousel">
+    <button class="arrow arrow-l" onclick="nav(-1)">&#8249;</button>
+    <button class="arrow arrow-r" onclick="nav(1)">&#8250;</button>
+    <div class="dots" id="dots"></div>
+    <div class="badge" id="badge">Tesla Model Y</div>
+  </div>
+  <div class="chat-panel" id="chat-panel">
+    <div class="sheet-handle" id="sheet-handle" style="display:none"></div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="msg bot" id="welcome-msg">Hey! What services are you interested in?
+        <div class="service-grid" id="service-grid">
+          <div class="service-btn" onclick="toggleService(this, 'wrap')">
+            <div class="service-check">&#10003;</div>
+            <div class="service-info"><div class="service-name">Car Wrap</div><div class="service-desc">Full or partial color change wrap</div></div>
+          </div>
+          <div class="service-btn" onclick="toggleService(this, 'tint')">
+            <div class="service-check">&#10003;</div>
+            <div class="service-info"><div class="service-name">Window Tint</div><div class="service-desc">Privacy and UV protection</div></div>
+          </div>
+          <div class="service-btn" onclick="toggleService(this, 'powder')">
+            <div class="service-check">&#10003;</div>
+            <div class="service-info"><div class="service-name">Powder Coating</div><div class="service-desc">Custom wheel color finish</div></div>
+          </div>
+          <button class="service-continue" id="service-continue" disabled onclick="continueWithServices()">Continue</button>
+        </div>
+      </div>
+    </div>
+    <div class="file-preview" id="file-preview" style="display:none">
+      <div class="file-preview-inner">
+        <span id="file-preview-name"></span>
+        <button onclick="clearAttachment()">&times;</button>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <label class="chat-file-label" for="chat-file">
+        <input type="file" id="chat-file" accept="image/*" hidden>
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      </label>
+      <input type="text" class="chat-input" id="chat-input" placeholder="Select options above..." autocomplete="off" disabled>
+      <button class="chat-send" id="chat-send" onclick="sendMessage()">
+        <svg width="16" height="16" fill="#000" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === Data ===
+const COLORS = [
+  {name:'Pearl white', hex:'#ffffff'},
+  {name:'Matte black', hex:'#0a0a0a', finish:'Matte', images:['./images/matte-black-1.webp','./images/matte-black-2.webp','./images/matte-black-3.webp','./images/matte-black-4.webp','./images/matte-black-5.webp','./images/matte-black-6.webp']},
+  {name:'Matte red', hex:'#c0201e', finish:'Matte', images:['./images/matte-red-2.webp','./images/matte-red-3.webp','./images/matte-red-4.webp','./images/matte-red-7.webp','./images/matte-red-1.webp','./images/matte-red-5.webp']},
+  {name:'Sunflower', hex:'#d4a017'},
+  {name:'Ocean blue', hex:'#1a3a8a'},
+  {name:'British green', hex:'#2a5a3a'},
+  {name:'Burnt orange', hex:'#c4651a', images:['./images/burnt-orange-1.webp','./images/burnt-orange-2.webp','./images/burnt-orange-3.webp','./images/burnt-orange-4.webp','./images/burnt-orange-5.webp']},
+  {name:'Royal purple', hex:'#5a1a8a'},
+  {name:'Gunmetal', hex:'#4a4e5a'},
+  {name:'Rose gold', hex:'#b87868'},
+];
+const FINISHES = [
+  {name:'Gloss', add:0},
+  {name:'Matte', add:100},
+  {name:'Satin', add:150},
+  {name:'Chrome', add:600},
+];
+
+const BASE_IMAGES = ['./images/base-0.png','./images/base-1.png','./images/base-2.png'];
+let currentSlide = 0;
+let st = { color: COLORS[0], finish: FINISHES[0] };
+const baseSlideData = [];
+let activeSlideCount = BASE_IMAGES.length;
+let usingRealPhotos = false;
+let customCarDescription = null;
+let carMetadata = null; // {year, make, model, body_color, wheel_color, trim_color} for cache
+let lastCacheId = null; // track current cache entry for confirm/reject voting
+const recolorCache = {};
+
+function voteCacheEntry(cacheId, vote) {
+  if (!cacheId) return;
+  fetch('/api/cache-vote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cacheId, vote }),
+  }).catch(() => {});
+}
+let chatHistory = [];
+let pendingFile = null;
+let uploadedPhoto = null;
+
+const carouselEl = document.getElementById('carousel');
+
+// === Carousel ===
+function createSlides(count) {
+  const preserved = Math.min(currentSlide, count - 1);
+  const newSlides = [];
+  for (let i = 0; i < count; i++) {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i === preserved ? ' active' : '');
+    div.dataset.idx = i;
+    div.innerHTML = '<canvas></canvas>';
+    newSlides.push(div);
+  }
+  return { slides: newSlides, preserved };
+}
+
+function commitSlides(newSlides, preserved, count) {
+  carouselEl.querySelectorAll('.slide').forEach(s => s.remove());
+  const anchor = carouselEl.querySelector('.arrow-l');
+  newSlides.forEach(s => carouselEl.insertBefore(s, anchor));
+  activeSlideCount = count;
+  currentSlide = preserved;
+  buildDots(count);
+}
+
+function buildDots(count) {
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('button');
+    d.className = 'dot' + (i === currentSlide ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  }
+}
+
+function nav(dir) { goTo((currentSlide + dir + activeSlideCount) % activeSlideCount); }
+function goTo(idx) {
+  const slides = carouselEl.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = idx;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+
+let touchStartX = 0;
+carouselEl.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+carouselEl.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) nav(dx > 0 ? -1 : 1);
+});
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft') nav(-1);
+  if (e.key === 'ArrowRight') nav(1);
+});
+
+// === Color engine ===
+const imgCache = {};
+function preloadImages(srcs) {
+  return Promise.all(srcs.map(src => {
+    if (imgCache[src]) return Promise.resolve(imgCache[src]);
+    return new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+      img.onload = () => { imgCache[src] = img; resolve(img); };
+    });
+  }));
+}
+
+function switchColor(color) {
+  if (customCarDescription) { recolorCustomCar(color); return; }
+  if (color.images) {
+    preloadImages(color.images).then(imgs => {
+      const { slides, preserved } = createSlides(color.images.length);
+      imgs.forEach((img, i) => {
+        const canvas = slides[i].querySelector('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+      });
+      usingRealPhotos = true;
+      commitSlides(slides, preserved, color.images.length);
+    });
+  } else {
+    if (usingRealPhotos || activeSlideCount !== BASE_IMAGES.length) {
+      preloadImages(BASE_IMAGES).then(() => {
+        const { slides, preserved } = createSlides(BASE_IMAGES.length);
+        usingRealPhotos = false;
+        commitSlides(slides, preserved, BASE_IMAGES.length);
+        initBaseSlides();
+      });
+    } else {
+      applyAllColors();
+    }
+  }
+}
+
+let baseLoaded = 0;
+function initBaseSlides() {
+  baseLoaded = 0; baseSlideData.length = 0;
+  const slides = carouselEl.querySelectorAll('.slide');
+  for (let i = 0; i < BASE_IMAGES.length; i++) initBaseSlide(i, slides);
+}
+function initBaseSlide(idx, slides) {
+  const img = new Image(); img.crossOrigin = 'anonymous'; img.src = BASE_IMAGES[idx];
+  img.onload = () => {
+    const canvas = slides[idx].querySelector('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+    const origData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const mask = new Uint8Array(canvas.width * canvas.height);
+    for (let i = 0; i < mask.length; i++) {
+      const r = origData.data[i*4], g = origData.data[i*4+1], b = origData.data[i*4+2];
+      const lum = (r*0.299+g*0.587+b*0.114)/255;
+      const maxC = Math.max(r,g,b), minC = Math.min(r,g,b);
+      const sat = maxC > 0 ? (maxC-minC)/maxC : 0;
+      let score = 0;
+      if (sat < 0.10) { if (lum > 0.65) score = 1.0; else if (lum > 0.42) score = (lum-0.42)/0.23; }
+      else if (sat < 0.18 && lum > 0.55) { score = (1-(sat-0.10)/0.08)*Math.min(1,(lum-0.55)/0.2); }
+      mask[i] = Math.round(score * 255);
+    }
+    baseSlideData[idx] = { origData: new Uint8ClampedArray(origData.data), mask, canvas, width: canvas.width, height: canvas.height };
+    baseLoaded++;
+    if (baseLoaded === BASE_IMAGES.length) applyAllColors();
+  };
+}
+function applyColorToSlide(idx, hex) {
+  const sd = baseSlideData[idx]; if (!sd) return;
+  const ctx = sd.canvas.getContext('2d');
+  if (hex === '#ffffff') { ctx.putImageData(new ImageData(new Uint8ClampedArray(sd.origData), sd.width, sd.height), 0, 0); return; }
+  const tr=parseInt(hex.slice(1,3),16)/255, tg=parseInt(hex.slice(3,5),16)/255, tb=parseInt(hex.slice(5,7),16)/255;
+  const newData = new Uint8ClampedArray(sd.origData);
+  for (let i = 0; i < sd.mask.length; i++) { const s = sd.mask[i]/255; if (s>0) { const j=i*4; newData[j]=Math.round(newData[j]*(1-s+s*tr)); newData[j+1]=Math.round(newData[j+1]*(1-s+s*tg)); newData[j+2]=Math.round(newData[j+2]*(1-s+s*tb)); } }
+  ctx.putImageData(new ImageData(newData, sd.width, sd.height), 0, 0);
+}
+function applyAllColors() { for (let i = 0; i < BASE_IMAGES.length; i++) applyColorToSlide(i, st.color.hex); }
+
+// === Image helpers ===
+function resizeImage(file, maxSize) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function parseError(text, fallback) { try { return JSON.parse(text).error || fallback; } catch(e) { return fallback; } }
+
+function showLoading(msg) {
+  let ov = document.getElementById('loading-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'loading-overlay'; ov.className = 'loading-overlay';
+    ov.innerHTML = '<div class="loading-progress"><div class="loading-progress-bar" id="loading-bar"></div></div><div class="spinner"></div><div class="loading-text" id="loading-text"></div><div class="loading-step" id="loading-step"></div>';
+    carouselEl.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  document.getElementById('loading-text').textContent = msg || 'Generating...';
+  document.getElementById('loading-step').textContent = '';
+  setLoadingProgress(0);
+}
+function setLoadingProgress(pct, stepText) {
+  const bar = document.getElementById('loading-bar');
+  if (bar) bar.style.width = pct + '%';
+  if (stepText) {
+    const step = document.getElementById('loading-step');
+    if (step) step.textContent = stepText;
+  }
+}
+function updateLoadingText(msg) {
+  const el = document.getElementById('loading-text');
+  if (el) el.textContent = msg;
+}
+function hideLoading() { const ov = document.getElementById('loading-overlay'); if (ov) ov.style.display = 'none'; }
+
+function displayGeneratedImages(images) {
+  return Promise.all(images.map(img => new Promise(resolve => {
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => resolve(el);
+    el.src = img.url ? img.url : `data:${img.mimeType};base64,${img.data}`;
+  }))).then(imgElements => {
+    const { slides } = createSlides(imgElements.length);
+    imgElements.forEach((img, i) => {
+      const canvas = slides[i].querySelector('canvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    });
+    usingRealPhotos = true; currentSlide = 0;
+    commitSlides(slides, 0, imgElements.length);
+  });
+}
+
+// Mobile helpers (no-ops now — carousel always visible via CSS)
+function showMobileCarousel() {}
+function minimizeMobileChat() {}
+
+function getBadgeLabel() {
+  if (carMetadata && carMetadata.year && carMetadata.make && carMetadata.model) {
+    return carMetadata.year + ' ' + carMetadata.make + ' ' + carMetadata.model;
+  }
+  return null;
+}
+function updateBadge() {
+  const label = getBadgeLabel();
+  document.getElementById('badge').textContent = label || (st.color.name + ' \u00b7 ' + st.finish.name);
+}
+
+// === Generate & Recolor ===
+async function generateViews() {
+  if (!uploadedPhoto) return;
+  showMobileCarousel();
+  showLoading('Analyzing your car and generating showroom views...');
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 300000);
+    const resp = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType }), signal: controller.signal }).finally(() => clearTimeout(timeout));
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(parseError(text, 'Generation failed'));
+    const parsed = JSON.parse(text);
+    await displayGeneratedImages(parsed.images);
+    customCarDescription = parsed.carDescription || null;
+    baseCarDescription = customCarDescription;
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    document.getElementById('badge').textContent = getBadgeLabel() || 'Your car';
+  } finally { hideLoading(); }
+}
+
+async function generateFromDescription(carDesc) {
+  console.log('generateFromDescription called with:', carDesc);
+  showMobileCarousel();
+
+  // Check cache first
+  if (carMetadata) {
+    try {
+      showLoading('Loading...');
+      const cacheResp = await fetch('/api/cache-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(carMetadata),
+      });
+      const cacheData = await cacheResp.json();
+      if (cacheData.hit) {
+        console.log('Cache hit for', carMetadata);
+        lastCacheId = cacheData.cacheId || null;
+        await displayGeneratedImages(cacheData.images);
+        customCarDescription = carDesc;
+        baseCarDescription = carDesc;
+        Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+        document.getElementById('badge').textContent = getBadgeLabel() || 'Your car';
+        hideLoading();
+        return;
+      }
+    } catch (e) { console.log('Cache lookup failed, falling back to generation:', e); }
+  }
+
+  showLoading('Setting up the studio...');
+  setLoadingProgress(5, 'Step 1 of 3');
+  try {
+    // Step 1: Generate hero image
+    const heroResp = await fetch('/api/generate-hero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carDescription: carDesc }),
+    });
+    const heroText = await heroResp.text();
+    if (!heroResp.ok) throw new Error(parseError(heroText, 'Hero generation failed'));
+    const heroData = JSON.parse(heroText);
+
+    // Show hero immediately
+    setLoadingProgress(40, 'Step 1 of 3 — complete');
+    updateLoadingText('Here\'s your front view!');
+    await displayGeneratedImages([heroData.image]);
+    customCarDescription = carDesc;
+    baseCarDescription = carDesc;
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    const shortDesc = carDesc.length > 50 ? carDesc.substring(0, 50).replace(/\s\S*$/, '...') : carDesc;
+    document.getElementById('badge').textContent = shortDesc;
+
+    // Step 2: Generate remaining angles in background
+    setLoadingProgress(50, 'Step 2 of 3 — generating side view');
+    updateLoadingText('Generating remaining angles...');
+
+    const remainResp = await fetch('/api/generate-remaining', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carDescription: carDesc,
+        heroImage: heroData.image.data,
+        cacheMetadata: carMetadata || undefined,
+      }),
+    });
+    const remainText = await remainResp.text();
+    if (!remainResp.ok) {
+      console.error('Remaining angles failed, keeping hero only');
+      hideLoading();
+      return;
+    }
+    const remainData = JSON.parse(remainText);
+    lastCacheId = remainData.cacheId || null;
+
+    setLoadingProgress(100, 'Step 3 of 3 — done!');
+    updateLoadingText('All views ready!');
+
+    // Display all 3 images
+    await displayGeneratedImages([heroData.image, ...remainData.images]);
+    await new Promise(r => setTimeout(r, 400)); // Brief pause to show 100%
+    hideLoading();
+  } catch (err) {
+    console.error('generateFromDescription error:', err);
+    hideLoading();
+    if (err.name === 'AbortError') throw new Error('Generation timed out — please try again');
+    if (err.message === 'Load failed') throw new Error('Connection lost — please try again');
+    throw err;
+  }
+}
+
+async function recolorCustomCar(color) {
+  const cacheKey = color.name + '|' + st.finish.name;
+  if (recolorCache[cacheKey]) { await displayGeneratedImages(recolorCache[cacheKey]); updateBadge(); return; }
+
+  // Check server cache
+  if (carMetadata) {
+    try {
+      showLoading('Loading...');
+      const cacheMeta = { ...carMetadata, body_color: color.name + ' ' + st.finish.name };
+      const cacheResp = await fetch('/api/cache-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cacheMeta),
+      });
+      const cacheData = await cacheResp.json();
+      if (cacheData.hit) {
+        console.log('Cache hit for recolor:', cacheMeta);
+        lastCacheId = cacheData.cacheId || null;
+        recolorCache[cacheKey] = cacheData.images;
+        await displayGeneratedImages(cacheData.images);
+        updateBadge();
+        hideLoading();
+        return;
+      }
+    } catch (e) { console.log('Recolor cache lookup failed:', e); }
+  }
+
+  showLoading('Applying ' + color.name + ' ' + st.finish.name + '...');
+  setLoadingProgress(10, 'Painting body panels');
+  // Animate progress while waiting
+  const progressInterval = setInterval(() => {
+    const bar = document.getElementById('loading-bar');
+    if (bar) {
+      const curr = parseFloat(bar.style.width) || 10;
+      if (curr < 85) bar.style.width = (curr + 2) + '%';
+    }
+  }, 1000);
+  try {
+    const body = { carDescription: customCarDescription, colorName: color.name, finishName: st.finish.name };
+    if (uploadedPhoto) body.userPhoto = { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType };
+    if (carMetadata) body.cacheMetadata = carMetadata;
+    const resp = await fetch('/api/recolor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    clearInterval(progressInterval);
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(parseError(text, 'Recolor failed'));
+    const parsed = JSON.parse(text);
+    lastCacheId = parsed.cacheId || null;
+    recolorCache[cacheKey] = parsed.images;
+    setLoadingProgress(100, 'Done!');
+    await displayGeneratedImages(parsed.images);
+    updateBadge();
+    await new Promise(r => setTimeout(r, 300));
+  } finally { clearInterval(progressInterval); hideLoading(); }
+}
+
+// === Chat ===
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+
+function lockInput(placeholder) {
+  chatInput.disabled = true;
+  chatInput.placeholder = placeholder || 'Select an option above...';
+}
+function unlockInput(placeholder) {
+  chatInput.disabled = false;
+  chatInput.placeholder = placeholder || 'Ask about wraps or upload your car...';
+  chatInput.focus();
+}
+
+function addMessage(text, role, actionTag) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  if (actionTag) {
+    const tag = document.createElement('div');
+    tag.className = 'action-tag';
+    tag.textContent = actionTag;
+    div.appendChild(tag);
+  }
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addMessageWithConfirm(text, carDescription) {
+  lockInput('Confirm above...');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = text;
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Yes, generate it!';
+  yesBtn.onclick = async () => {
+    yesBtn.disabled = true; noBtn.disabled = true;
+    yesBtn.textContent = 'Generating...';
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
+    try {
+      await generateFromDescription(carDescription);
+      addPostGenerateConfirm(carDescription);
+      chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
+    } catch (err) {
+      console.error('Generation error:', err);
+      btns.remove();
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong generating your car.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = async () => {
+        errMsg.remove();
+        addMessageWithConfirm('Ready to generate?', carDescription);
+      };
+      errBtns.appendChild(retryBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return;
+    }
+    btns.remove();
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Not quite';
+  noBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite, let me correct some details.' }] });
+    addMessage('Not quite', 'user');
+    sendMessage.fromCorrection = true;
+    unlockInput('Correct the details...');
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: chatHistory }) })
+      .then(r => r.json()).then(data => {
+        if (data.reply) {
+          addMessage(data.reply, 'bot');
+          chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+        }
+      });
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+const PALETTE_COLORS = [
+  { name: 'Matte Black', hex: '#0a0a0a', finish: 'Matte' },
+  { name: 'Pearl White', hex: '#f5f5f5', finish: 'Gloss' },
+  { name: 'Midnight Blue', hex: '#1a2744', finish: 'Gloss' },
+  { name: 'Racing Red', hex: '#cc1a1a', finish: 'Gloss' },
+  { name: 'Nardo Grey', hex: '#8a8f94', finish: 'Matte' },
+  { name: 'Forest Green', hex: '#2a4a2a', finish: 'Satin' },
+  { name: 'Sunflower', hex: '#d4a017', finish: 'Gloss' },
+  { name: 'Royal Purple', hex: '#5a1a8a', finish: 'Gloss' },
+  { name: 'Rose Gold', hex: '#b87868', finish: 'Satin' },
+  { name: 'Burnt Orange', hex: '#c4651a', finish: 'Gloss' },
+  { name: 'Chrome Silver', hex: '#c0c0c0', finish: 'Chrome' },
+  { name: 'Teal', hex: '#1a6a6a', finish: 'Satin' },
+];
+
+function addMessageWithPalette(text) {
+  lockInput('Pick a color above...');
+  addMessage(text, 'bot');
+
+  const section = document.createElement('div');
+  section.className = 'palette-section';
+
+  const title = document.createElement('div');
+  title.className = 'palette-title';
+  title.textContent = 'Popular colors';
+  section.appendChild(title);
+
+  const palette = document.createElement('div');
+  palette.className = 'chat-palette';
+
+  PALETTE_COLORS.forEach((pc, idx) => {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.style.animationDelay = (idx * 0.05) + 's';
+
+    const swatch = document.createElement('div');
+    swatch.className = 'chat-swatch';
+    swatch.style.background = pc.hex;
+    if (pc.hex === '#f5f5f5') swatch.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
+    if (pc.hex === '#0a0a0a') swatch.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.15)';
+    swatch.title = pc.name;
+    swatch.onclick = () => {
+      section.remove();
+      addMessage(pc.name, 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: pc.name }] });
+      addRecolorConfirm(pc.name + ' — want me to generate it?', pc.name, pc.finish);
+    };
+
+    const label = document.createElement('div');
+    label.className = 'chat-swatch-label';
+    label.textContent = pc.name;
+
+    item.appendChild(swatch);
+    item.appendChild(label);
+    palette.appendChild(item);
+  });
+
+  section.appendChild(palette);
+
+  const customRow = document.createElement('div');
+  customRow.className = 'chat-custom-color';
+  customRow.textContent = 'Or describe your own color...';
+  customRow.onclick = () => {
+    section.remove();
+    unlockInput('Type a color name, e.g. "midnight purple metallic"...');
+  };
+  section.appendChild(customRow);
+
+  chatMessages.appendChild(section);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addPostGenerateConfirm(carDescription) {
+  lockInput('Confirm above...');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = 'Does this look like your car?';
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Looks great!';
+  yesBtn.onclick = () => {
+    btns.remove();
+    voteCacheEntry(lastCacheId, 'confirm');
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes, looks great!' }] });
+    if (selectedServices.has('wrap')) {
+      addMessageWithPalette('Awesome! Now pick a wrap color or describe your own:');
+      chatHistory.push({ role: 'model', parts: [{ text: 'Awesome! Pick a wrap color.' }] });
+    } else {
+      proceedToNextService(null);
+    }
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Not quite';
+  noBtn.onclick = () => {
+    btns.remove();
+    voteCacheEntry(lastCacheId, 'reject');
+    addMessage('Not quite', 'user');
+    addMessage('No worries — let\'s try again with the correct details.', 'bot');
+    chatHistory.push({ role: 'user', parts: [{ text: 'Not quite' }] });
+    chatHistory.push({ role: 'model', parts: [{ text: 'No worries — let\'s try again.' }] });
+    startDescribe();
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addRecolorConfirm(text, colorName, finishName) {
+  lockInput('Confirm above...');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = text;
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Yes, show me!';
+  yesBtn.onclick = async () => {
+    yesBtn.disabled = true; noBtn.disabled = true;
+    yesBtn.textContent = 'Generating...';
+    chatHistory.push({ role: 'user', parts: [{ text: 'Yes' }] });
+    try {
+      const preset = COLORS.find(c => c.name.toLowerCase() === colorName.toLowerCase());
+      const color = preset || { name: colorName, hex: '#888888' };
+      if (finishName) st.finish = FINISHES.find(f => f.name === finishName) || st.finish;
+      st.color = color;
+      updateBadge();
+      if (customCarDescription) {
+        await recolorCustomCar(color);
+      } else {
+        switchColor(color);
+      }
+      // Check if there are more services after wrap
+      const hasMoreServices = SERVICE_ORDER.some(s => s !== 'wrap' && selectedServices.has(s) && !completedServices.has(s));
+      if (hasMoreServices) {
+        const msg = document.createElement('div');
+        msg.className = 'msg bot';
+        msg.textContent = 'Looking good! Happy with this color?';
+        const mbtns = document.createElement('div');
+        mbtns.className = 'confirm-btns';
+        const yBtn = document.createElement('button');
+        yBtn.className = 'confirm-btn yes';
+        yBtn.textContent = 'Love it, next step!';
+        yBtn.onclick = () => { mbtns.remove(); completedServices.add('wrap'); proceedToNextService('wrap'); };
+        const nBtn = document.createElement('button');
+        nBtn.className = 'confirm-btn no';
+        nBtn.textContent = 'Try another color';
+        nBtn.onclick = () => { mbtns.remove(); addMessageWithPalette('Pick another color:'); };
+        mbtns.appendChild(yBtn);
+        mbtns.appendChild(nBtn);
+        msg.appendChild(mbtns);
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      } else {
+        addMessageWithPalette('Here it is! Want to try another color?');
+      }
+      chatHistory.push({ role: 'model', parts: [{ text: 'Here it is!' }] });
+    } catch (err) {
+      console.error('Recolor error:', err);
+      btns.remove();
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong generating that color.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = () => { errMsg.remove(); addRecolorConfirm(colorName + ' — want me to generate it?', colorName, finishName); };
+      const diffBtn = document.createElement('button');
+      diffBtn.className = 'confirm-btn no';
+      diffBtn.textContent = 'Pick another color';
+      diffBtn.onclick = () => { errMsg.remove(); addMessageWithPalette('Pick a different color:'); };
+      errBtns.appendChild(retryBtn);
+      errBtns.appendChild(diffBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return;
+    }
+    btns.remove();
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Something else';
+  noBtn.onclick = () => {
+    btns.remove();
+    chatHistory.push({ role: 'user', parts: [{ text: 'Actually, suggest something else.' }] });
+    addMessage('Something else', 'user');
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: chatHistory }) })
+      .then(r => r.json()).then(data => {
+        if (data.reply) {
+          const recolorAction = (data.actions || []).find(a => a.type === 'recolor_car');
+          if (recolorAction) {
+            addRecolorConfirm(data.reply, recolorAction.colorName, recolorAction.finishName);
+          } else {
+            addMessage(data.reply, 'bot');
+          }
+          chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+        }
+      });
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.id = 'typing-indicator';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function hideTyping() { const t = document.getElementById('typing-indicator'); if (t) t.remove(); }
+
+// File attachment — auto-send when a photo is selected
+document.getElementById('chat-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingFile = file;
+  document.getElementById('file-preview').style.display = 'block';
+  document.getElementById('file-preview-name').textContent = file.name;
+  // Auto-send the photo
+  sendMessage();
+});
+
+function clearAttachment() {
+  pendingFile = null;
+  document.getElementById('file-preview').style.display = 'none';
+  document.getElementById('chat-file').value = '';
+}
+
+chatInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  const hasFile = !!pendingFile;
+  if (!text && !hasFile) return;
+
+  // If a photo is uploaded, go straight to generate flow
+  if (hasFile) {
+    addMessage('Uploaded a photo', 'user');
+    chatInput.value = '';
+    const resized = await resizeImage(pendingFile, 1024);
+    uploadedPhoto = resized;
+    clearAttachment();
+    chatHistory.push({ role: 'user', parts: [{ text: 'I uploaded a photo of my car.' }] });
+    addMessage('Analyzing your car and generating showroom views...', 'bot');
+    chatHistory.push({ role: 'model', parts: [{ text: 'Analyzing your car and generating showroom views...' }] });
+    try {
+      await generateViews();
+      addPostGenerateConfirm(customCarDescription);
+      chatHistory.push({ role: 'model', parts: [{ text: 'Does this look like your car?' }] });
+    } catch (err) {
+      console.error('Photo generation error:', err);
+      const errMsg = document.createElement('div');
+      errMsg.className = 'msg bot';
+      errMsg.textContent = 'Something went wrong analyzing your photo.';
+      const errBtns = document.createElement('div');
+      errBtns.className = 'confirm-btns';
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'confirm-btn yes';
+      retryBtn.textContent = 'Try again';
+      retryBtn.onclick = async () => { errMsg.remove(); await generateViews().then(() => { addPostGenerateConfirm(customCarDescription); }).catch(() => { addMessage('Still having trouble — please try again later.', 'bot'); }); };
+      errBtns.appendChild(retryBtn);
+      errMsg.appendChild(errBtns);
+      chatMessages.appendChild(errMsg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    return;
+  }
+
+  // Normal text message
+  addMessage(text, 'user');
+  chatInput.value = '';
+
+  const parts = [];
+  parts.push({ text });
+
+  chatHistory.push({ role: 'user', parts });
+
+  // Send to chat API
+  showTyping();
+  document.getElementById('chat-send').disabled = true;
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: chatHistory, hasCustomCar: !!customCarDescription }),
+    });
+    const data = await resp.json();
+    hideTyping();
+
+    if (!resp.ok) throw new Error(data.error || 'Chat failed');
+
+    // Show bot reply with appropriate confirmation buttons
+    if (data.reply) {
+      const genAction = (data.actions || []).find(a => a.type === 'generate_car');
+      const recolorAction = (data.actions || []).find(a => a.type === 'recolor_car');
+
+      if (genAction) {
+        if (genAction.cacheMetadata) carMetadata = genAction.cacheMetadata;
+        addMessageWithConfirm(data.reply, genAction.carDescription);
+      } else if (recolorAction) {
+        addRecolorConfirm(data.reply, recolorAction.colorName, recolorAction.finishName);
+      } else {
+        addMessage(data.reply, 'bot');
+      }
+      chatHistory.push({ role: 'model', parts: [{ text: data.reply }] });
+    }
+  } catch (err) {
+    hideTyping();
+    addMessage('Sorry, something went wrong: ' + err.message, 'bot');
+  } finally {
+    document.getElementById('chat-send').disabled = false;
+  }
+}
+
+// === Service selection ===
+let selectedServices = new Set();
+
+function toggleService(el, service) {
+  el.classList.toggle('selected');
+  if (selectedServices.has(service)) selectedServices.delete(service);
+  else selectedServices.add(service);
+  document.getElementById('service-continue').disabled = selectedServices.size === 0;
+}
+
+function continueWithServices() {
+  const grid = document.getElementById('service-grid');
+  grid.remove();
+  const names = [];
+  if (selectedServices.has('wrap')) names.push('Car Wrap');
+  if (selectedServices.has('tint')) names.push('Window Tint');
+  if (selectedServices.has('powder')) names.push('Powder Coating');
+  addMessage(names.join(', '), 'user');
+
+  // Show car input options
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.textContent = 'Great choice! Now let\'s get your car set up. How would you like to start?';
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  btns.style.marginTop = '10px';
+  const descBtn = document.createElement('button');
+  descBtn.className = 'confirm-btn yes';
+  descBtn.textContent = 'I\'ll describe my car';
+  descBtn.onclick = () => { div.querySelector('.confirm-btns').remove(); startDescribe(); };
+  const photoBtn = document.createElement('button');
+  photoBtn.className = 'confirm-btn no';
+  photoBtn.textContent = 'I have a photo';
+  photoBtn.onclick = () => { div.querySelector('.confirm-btns').remove(); startUpload(); };
+  btns.appendChild(descBtn);
+  btns.appendChild(photoBtn);
+  div.appendChild(btns);
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  lockInput('Choose an option above...');
+  chatHistory.push({ role: 'user', parts: [{ text: 'I want: ' + names.join(', ') }] });
+  chatHistory.push({ role: 'model', parts: [{ text: 'Great! How would you like to start?' }] });
+}
+
+function startDescribe() {
+  addMessage('I\'ll describe my car', 'user');
+  chatHistory.push({ role: 'user', parts: [{ text: "I'll describe my car" }] });
+  lockInput('Fill out the form above...');
+
+  // Step 1: Year / Make / Model form
+  const formMsg = document.createElement('div');
+  formMsg.className = 'msg bot';
+  formMsg.innerHTML = '<div style="margin-bottom:8px">Let\'s start with the basics:</div>';
+
+  const form = document.createElement('div');
+  form.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-top:4px;';
+
+  const fieldStyle = 'width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;';
+
+  const yearInput = document.createElement('input');
+  yearInput.type = 'text'; yearInput.placeholder = 'Year'; yearInput.maxLength = 4;
+  yearInput.style.cssText = fieldStyle;
+  yearInput.onfocus = () => yearInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  yearInput.onblur = () => yearInput.style.borderColor = 'rgba(255,255,255,0.12)';
+
+  const makeInput = document.createElement('input');
+  makeInput.type = 'text'; makeInput.placeholder = 'Make (e.g. BMW, Tesla, Porsche)';
+  makeInput.style.cssText = fieldStyle;
+  makeInput.onfocus = () => makeInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  makeInput.onblur = () => makeInput.style.borderColor = 'rgba(255,255,255,0.12)';
+
+  const modelInput = document.createElement('input');
+  modelInput.type = 'text'; modelInput.placeholder = 'Model (e.g. M4, Model 3, 911)';
+  modelInput.style.cssText = fieldStyle;
+  modelInput.onfocus = () => modelInput.style.borderColor = 'rgba(212,168,50,0.6)';
+  modelInput.onblur = () => modelInput.style.borderColor = 'rgba(255,255,255,0.12)';
+
+  form.appendChild(yearInput);
+  form.appendChild(makeInput);
+  form.appendChild(modelInput);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'confirm-btn yes';
+  nextBtn.textContent = 'Next';
+  nextBtn.style.cssText = 'width:100%;margin-top:2px;padding:12px;';
+  nextBtn.onclick = () => {
+    const year = yearInput.value.trim();
+    const make = makeInput.value.trim();
+    const model = modelInput.value.trim();
+    if (!year || !make || !model) return;
+
+    // Store structured data
+    carMetadata = { year, make, model, body_color: null, wheel_color: null };
+
+    // Disable form and show edit button
+    yearInput.disabled = true; makeInput.disabled = true; modelInput.disabled = true;
+    nextBtn.remove();
+
+    // Mark where subsequent messages start so we can remove them on edit
+    const editMarker = document.createComment('edit-marker');
+    chatMessages.appendChild(editMarker);
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    editBtn.style.cssText = 'align-self:flex-start;padding:6px 14px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.2s;margin-top:-2px;';
+    editBtn.onmouseenter = () => { editBtn.style.borderColor = 'rgba(212,168,50,0.4)'; editBtn.style.color = '#d4a832'; };
+    editBtn.onmouseleave = () => { editBtn.style.borderColor = 'rgba(255,255,255,0.15)'; editBtn.style.color = 'rgba(255,255,255,0.5)'; };
+    editBtn.onclick = () => {
+      // Remove all messages after the form
+      while (editMarker.nextSibling) editMarker.nextSibling.remove();
+      editMarker.remove();
+      // Re-enable inputs
+      yearInput.disabled = false; makeInput.disabled = false; modelInput.disabled = false;
+      editBtn.replaceWith(reNextBtn);
+      yearInput.focus();
+      // Reset chat history back to the describe prompt
+      chatHistory.length = Math.max(chatHistory.length - 1, 0);
+      while (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].parts[0].text !== "I'll describe my car") chatHistory.pop();
+    };
+    const reNextBtn = document.createElement('button');
+    reNextBtn.className = 'confirm-btn yes';
+    reNextBtn.textContent = 'Next';
+    reNextBtn.style.cssText = 'width:100%;margin-top:2px;padding:12px;';
+    reNextBtn.onclick = () => nextBtn.onclick();
+    form.appendChild(editBtn);
+
+    addMessage(year + ' ' + make + ' ' + model, 'user');
+    chatHistory.push({ role: 'user', parts: [{ text: year + ' ' + make + ' ' + model }] });
+
+    // Step 2: Body color
+    showColorInput('What color is the body?', (color) => {
+      carMetadata.body_color = color;
+      addMessage(color, 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: color }] });
+
+      // Step 3: Rim color
+      showColorInput('What color are the rims?', (rimColor) => {
+        carMetadata.wheel_color = rimColor;
+        addMessage(rimColor, 'user');
+        chatHistory.push({ role: 'user', parts: [{ text: rimColor }] });
+
+        // Step 4: Trim color
+        showTrimPicker((trimColor) => {
+          const desc = `A ${year} ${make} ${model} in ${color} with ${rimColor} rims and ${trimColor} trim`;
+          carMetadata.body_color = color;
+          carMetadata.trim_color = trimColor;
+
+          addMessage(trimColor + ' trim', 'user');
+          chatHistory.push({ role: 'user', parts: [{ text: trimColor + ' trim' }] });
+
+          // Confirm
+          const genTag = `${year}|${make}|${model}|${color}|${rimColor}|${desc}`;
+          chatHistory.push({ role: 'model', parts: [{ text: `Got it — ${desc}. Sound right? [GENERATE: ${genTag}]` }] });
+          addMessageWithConfirm(`Got it — ${desc}. Sound right?`, desc);
+        });
+      });
+    });
+  };
+  form.appendChild(nextBtn);
+  formMsg.appendChild(form);
+  chatMessages.appendChild(formMsg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  yearInput.focus();
+}
+
+function showColorInput(label, callback) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.innerHTML = '<div style="margin-bottom:8px">' + label + '</div>';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'e.g. white, matte black, silver...';
+  input.style.cssText = 'width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.2s;';
+  input.onfocus = () => input.style.borderColor = 'rgba(212,168,50,0.6)';
+  input.onblur = () => input.style.borderColor = 'rgba(255,255,255,0.12)';
+
+  const goBtn = document.createElement('button');
+  goBtn.className = 'confirm-btn yes';
+  goBtn.textContent = 'Next';
+  goBtn.style.cssText = 'width:100%;padding:12px;';
+  goBtn.onclick = () => {
+    const val = input.value.trim();
+    if (!val) return;
+    input.disabled = true;
+    goBtn.remove();
+    callback(val);
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
+
+  wrap.appendChild(input);
+  wrap.appendChild(goBtn);
+  msg.appendChild(wrap);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  input.focus();
+}
+
+function showTrimPicker(callback) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.innerHTML = '<div style="margin-bottom:10px">What color is the trim?</div><div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px;">Window surrounds, grille, mirror caps</div>';
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+
+  ['Chrome', 'Gloss Black', 'Body-colored', 'Dark Grey'].forEach(opt => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#fff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;';
+    btn.textContent = opt;
+    btn.onmouseenter = () => { btn.style.borderColor = 'rgba(212,168,50,0.6)'; btn.style.background = 'rgba(212,168,50,0.1)'; };
+    btn.onmouseleave = () => { btn.style.borderColor = 'rgba(255,255,255,0.12)'; btn.style.background = 'rgba(255,255,255,0.06)'; };
+    btn.onclick = () => { grid.remove(); otherRow.remove(); callback(opt.toLowerCase()); };
+    grid.appendChild(btn);
+  });
+
+  const otherRow = document.createElement('div');
+  otherRow.style.cssText = 'margin-top:6px;';
+  const otherBtn = document.createElement('button');
+  otherBtn.style.cssText = 'width:100%;padding:10px 14px;background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:rgba(255,255,255,0.4);font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;';
+  otherBtn.textContent = 'Other...';
+  otherBtn.onmouseenter = () => { otherBtn.style.color = '#fff'; otherBtn.style.borderColor = 'rgba(255,255,255,0.2)'; };
+  otherBtn.onmouseleave = () => { otherBtn.style.color = 'rgba(255,255,255,0.4)'; otherBtn.style.borderColor = 'rgba(255,255,255,0.08)'; };
+  otherBtn.onclick = () => {
+    grid.remove();
+    otherRow.remove();
+    // Show text input for custom trim
+    showColorInput('Type your trim color:', (val) => { callback(val); });
+  };
+  otherRow.appendChild(otherBtn);
+
+  msg.appendChild(grid);
+  msg.appendChild(otherRow);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function startUpload() {
+  addMessage('I have a photo', 'user');
+  addMessage('Drop it in! I\'ll analyze it and set everything up.', 'bot');
+  chatHistory.push({ role: 'user', parts: [{ text: 'I have a photo of my car' }] });
+  chatHistory.push({ role: 'model', parts: [{ text: "Drop it in! I'll analyze it and set everything up." }] });
+  document.getElementById('chat-file').click();
+}
+
+// === Running description — accumulates across services ===
+let baseCarDescription = null; // original car before any services
+
+// === Tint selection ===
+const TINT_OPTIONS = [
+  { pct: '5%', label: 'Limo', desc: 'Darkest' },
+  { pct: '15%', label: 'Dark', desc: '' },
+  { pct: '20%', label: 'Medium', desc: 'Popular' },
+  { pct: '35%', label: 'Light', desc: '' },
+  { pct: '50%', label: 'Lightest', desc: '' },
+];
+
+function showTintOptions() {
+  lockInput('Pick a tint level above...');
+  addMessage('What tint level would you like?', 'bot');
+  chatHistory.push({ role: 'model', parts: [{ text: 'What tint level would you like?' }] });
+
+  const section = document.createElement('div');
+  section.className = 'palette-section';
+  const grid = document.createElement('div');
+  grid.className = 'tint-grid';
+
+  TINT_OPTIONS.forEach(t => {
+    const opt = document.createElement('div');
+    opt.className = 'tint-option';
+    opt.innerHTML = `<div class="tint-pct">${t.pct}</div><div class="tint-label">${t.label}</div>`;
+    opt.onclick = () => {
+      section.remove();
+      addMessage(t.pct + ' tint', 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: t.pct + ' window tint' }] });
+      applyTint(t.pct);
+    };
+    grid.appendChild(opt);
+  });
+
+  section.appendChild(grid);
+  chatMessages.appendChild(section);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function applyTint(pct) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = pct + ' tint on all windows — applying now...';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  const tintDesc = customCarDescription + '. Apply ' + pct + ' window tint to all side and rear windows.';
+  if (carMetadata) carMetadata.tint_level = pct;
+  try {
+    await recolorWithDescription(tintDesc, st.color.name, st.finish.name);
+    msg.textContent = pct + ' tint applied! Does this look right?';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'confirm-btn yes';
+    yesBtn.textContent = 'Looks good!';
+    yesBtn.onclick = () => { btns.remove(); proceedToNextService('tint'); };
+    const noBtn = document.createElement('button');
+    noBtn.className = 'confirm-btn no';
+    noBtn.textContent = 'Try different %';
+    noBtn.onclick = () => {
+      btns.remove();
+      // Revert description to before tint
+      customCarDescription = customCarDescription.replace(/\. Apply \d+% window tint.*$/, '');
+      showTintOptions();
+    };
+    btns.appendChild(yesBtn);
+    btns.appendChild(noBtn);
+    msg.appendChild(btns);
+  } catch (err) {
+    console.error('Tint error:', err);
+    msg.textContent = 'Hmm, something went wrong applying the tint.';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'confirm-btn yes';
+    retryBtn.textContent = 'Try again';
+    retryBtn.onclick = () => { msg.remove(); applyTint(pct); };
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'confirm-btn no';
+    skipBtn.textContent = 'Skip tint';
+    skipBtn.onclick = () => { msg.remove(); proceedToNextService('tint'); };
+    btns.appendChild(retryBtn);
+    btns.appendChild(skipBtn);
+    msg.appendChild(btns);
+  }
+}
+
+// === Powder coat selection ===
+const POWDER_COLORS = [
+  { name: 'Gloss Black', hex: '#111' },
+  { name: 'Satin Black', hex: '#222' },
+  { name: 'Gunmetal', hex: '#4a4e5a' },
+  { name: 'Bronze', hex: '#8b6914' },
+  { name: 'Gold', hex: '#c5a53a' },
+  { name: 'Silver', hex: '#c0c0c0' },
+  { name: 'White', hex: '#e8e8e8' },
+  { name: 'Red', hex: '#8b1a1a' },
+  { name: 'Blue', hex: '#1a3a8a' },
+  { name: 'Copper', hex: '#b87333' },
+];
+
+function showPowderCoatOptions() {
+  lockInput('Pick a wheel color above...');
+  addMessage('What color would you like for the wheels?', 'bot');
+  chatHistory.push({ role: 'model', parts: [{ text: 'What color for the wheels?' }] });
+
+  const section = document.createElement('div');
+  section.className = 'palette-section';
+  const title = document.createElement('div');
+  title.className = 'palette-title';
+  title.textContent = 'Powder Coat Colors';
+  section.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'powder-palette';
+
+  POWDER_COLORS.forEach(pc => {
+    const wrap = document.createElement('div');
+    wrap.style.textAlign = 'center';
+    const swatch = document.createElement('div');
+    swatch.className = 'powder-swatch';
+    swatch.style.background = pc.hex;
+    swatch.title = pc.name;
+    swatch.onclick = () => {
+      section.remove();
+      addMessage(pc.name + ' wheels', 'user');
+      chatHistory.push({ role: 'user', parts: [{ text: pc.name + ' powder coated wheels' }] });
+      applyPowderCoat(pc.name);
+    };
+    const label = document.createElement('div');
+    label.className = 'powder-label';
+    label.textContent = pc.name;
+    wrap.appendChild(swatch);
+    wrap.appendChild(label);
+    grid.appendChild(wrap);
+  });
+
+  section.appendChild(grid);
+  chatMessages.appendChild(section);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function applyPowderCoat(colorName) {
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = colorName + ' powder coat — applying now...';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  const powderDesc = customCarDescription + '. The wheels are now ' + colorName + ' powder coated.';
+  if (carMetadata) carMetadata.wheel_color = colorName;
+  try {
+    await recolorWithDescription(powderDesc, st.color.name, st.finish.name);
+    msg.textContent = colorName + ' wheels applied! Does this look right?';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'confirm-btn yes';
+    yesBtn.textContent = 'Looks good!';
+    yesBtn.onclick = () => { btns.remove(); proceedToNextService('powder'); };
+    const noBtn = document.createElement('button');
+    noBtn.className = 'confirm-btn no';
+    noBtn.textContent = 'Try different color';
+    noBtn.onclick = () => {
+      btns.remove();
+      customCarDescription = customCarDescription.replace(/\. The wheels are now.*powder coated\.$/, '');
+      showPowderCoatOptions();
+    };
+    btns.appendChild(yesBtn);
+    btns.appendChild(noBtn);
+    msg.appendChild(btns);
+  } catch (err) {
+    console.error('Powder coat error:', err);
+    msg.textContent = 'Hmm, something went wrong with the wheels.';
+    const btns = document.createElement('div');
+    btns.className = 'confirm-btns';
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'confirm-btn yes';
+    retryBtn.textContent = 'Try again';
+    retryBtn.onclick = () => { msg.remove(); applyPowderCoat(colorName); };
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'confirm-btn no';
+    skipBtn.textContent = 'Skip wheels';
+    skipBtn.onclick = () => { msg.remove(); proceedToNextService('powder'); };
+    btns.appendChild(retryBtn);
+    btns.appendChild(skipBtn);
+    msg.appendChild(btns);
+  }
+}
+
+// Recolor with a modified description (for tint/powder)
+async function recolorWithDescription(desc, colorName, finishName) {
+  showLoading('Generating updated view...');
+  try {
+    const resp = await fetch('/api/recolor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carDescription: desc, colorName, finishName, userPhoto: uploadedPhoto ? { data: uploadedPhoto.base64, mimeType: uploadedPhoto.mimeType } : undefined, cacheMetadata: carMetadata || undefined }),
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(parseError(text, 'Failed'));
+    const { images } = JSON.parse(text);
+    await displayGeneratedImages(images);
+    customCarDescription = desc;
+  } finally { hideLoading(); }
+}
+
+// Flow through selected services in order
+const SERVICE_ORDER = ['wrap', 'tint', 'powder'];
+let completedServices = new Set();
+
+function proceedToNextService(justCompleted) {
+  if (justCompleted) completedServices.add(justCompleted);
+
+  for (const svc of SERVICE_ORDER) {
+    if (selectedServices.has(svc) && !completedServices.has(svc)) {
+      if (svc === 'wrap') return;
+      if (svc === 'tint') { showTintOptions(); return; }
+      if (svc === 'powder') { showPowderCoatOptions(); return; }
+    }
+  }
+
+  // All services done — final confirmation
+  showFinalConfirmation();
+}
+
+function showFinalConfirmation() {
+  lockInput('Confirm above...');
+  const msg = document.createElement('div');
+  msg.className = 'msg bot';
+  msg.textContent = 'Here\'s your fully customized ride! Everything look good?';
+  const btns = document.createElement('div');
+  btns.className = 'confirm-btns';
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'confirm-btn yes';
+  yesBtn.textContent = 'Looks perfect!';
+  yesBtn.onclick = () => {
+    btns.remove();
+    addMessage('Awesome! Your customized wrap looks great. Feel free to keep exploring different colors and options!', 'bot');
+  };
+  const noBtn = document.createElement('button');
+  noBtn.className = 'confirm-btn no';
+  noBtn.textContent = 'Start customizing over';
+  noBtn.onclick = () => {
+    btns.remove();
+    // Reset to post-generation state
+    completedServices.clear();
+    Object.keys(recolorCache).forEach(k => delete recolorCache[k]);
+    customCarDescription = baseCarDescription;
+    addMessage('No problem! Let\'s start fresh with your car.', 'bot');
+    // Regenerate original car
+    if (selectedServices.has('wrap')) {
+      addMessageWithPalette('Pick a wrap color or describe your own:');
+    } else {
+      proceedToNextService(null);
+    }
+  };
+  btns.appendChild(yesBtn);
+  btns.appendChild(noBtn);
+  msg.appendChild(btns);
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// === Quote Form (captures lead + visualizer image) ===
+// === Init ===
+// Load base images as default showcase
+preloadImages(BASE_IMAGES).then(imgs => {
+  const { slides, preserved } = createSlides(imgs.length);
+  imgs.forEach((img, i) => {
+    const canvas = slides[i].querySelector('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+  });
+  usingRealPhotos = true;
+  commitSlides(slides, preserved, imgs.length);
+});
+
+// Input starts disabled — user must select services first
+</script>
+</body>
+</html>
