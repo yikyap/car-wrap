@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require("@google/genai");
+const OpenAI = require("openai");
 
 const SYSTEM_MSG = `You are a car wrap advisor chatbot. 1-2 sentences max. Casual tone.
 
@@ -32,6 +32,12 @@ CRITICAL RULES:
 Available wraps: Pearl white, Matte black, Matte red, Sunflower, Ocean blue, British green, Burnt orange, Royal purple, Gunmetal, Rose gold, or any custom color.
 Finishes: Gloss ($2,200), Matte ($2,300), Satin ($2,350), Chrome ($2,800).`;
 
+function getClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+  return new OpenAI({ apiKey });
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -42,34 +48,25 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Missing messages array" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  const fullMessages = [
-    { role: "user", parts: [{ text: SYSTEM_MSG }] },
-    {
-      role: "model",
-      parts: [
-        {
-          text: "Understood. I will ask body color and rim color as separate questions. I will ALWAYS include [GENERATE: ...] when confirming car details and [RECOLOR: ... | ...] when the user picks a wrap color. 1-2 sentences max.",
-        },
-      ],
-    },
-    ...messages,
-  ];
-
   try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: fullMessages,
+    const client = getClient();
+
+    // Convert chat messages to OpenAI format
+    const openaiMessages = [
+      { role: "system", content: SYSTEM_MSG },
+      ...messages.map(m => ({
+        role: m.role === "model" ? "assistant" : "user",
+        content: (m.parts || []).map(p => p.text || "").join(" "),
+      })),
+    ];
+
+    const result = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: openaiMessages,
+      max_tokens: 200,
     });
 
-    let reply =
-      result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I didn't catch that.";
+    let reply = result.choices?.[0]?.message?.content || "Sorry, I didn't catch that.";
 
     // Parse out action tags
     const actions = [];
@@ -82,7 +79,6 @@ module.exports = async function handler(req, res) {
       let carDescription, cacheMetadata;
 
       if (parts.length >= 6) {
-        // Structured format: year|make|model|body_color|wheel_color|description
         cacheMetadata = {
           year: parts[0],
           make: parts[1],
@@ -90,9 +86,8 @@ module.exports = async function handler(req, res) {
           body_color: parts[3],
           wheel_color: parts[4],
         };
-        carDescription = parts.slice(5).join("|"); // In case description contains pipes
+        carDescription = parts.slice(5).join("|");
       } else {
-        // Fallback: old format, just a description string
         carDescription = raw;
         cacheMetadata = null;
       }
@@ -112,43 +107,23 @@ module.exports = async function handler(req, res) {
       reply = reply.replace(recolorMatch[0], "").trim();
     }
 
-    // Fallback: if no recolor tag but user is asking about a color
-    // ONLY trigger after a car has been generated (indicated by a prior [GENERATE] action in conversation)
-    const conversationText = messages.map(m => m.parts?.map(p => p.text || '').join(' ')).join(' ');
+    // Fallback: detect color mentions after car was generated
+    const conversationText = messages.map(m => (m.parts || []).map(p => p.text || '').join(' ')).join(' ');
     const carWasGenerated = conversationText.toLowerCase().includes('your car is ready') || conversationText.toLowerCase().includes('what wrap color');
     if (actions.length === 0 && carWasGenerated) {
-      const lastUserMsg = messages
-        .filter((m) => m.role === "user")
-        .pop();
-      const lastUserText = (lastUserMsg?.parts || [])
-        .map((p) => p.text || "")
-        .join(" ")
-        .toLowerCase();
+      const lastUserMsg = messages.filter(m => m.role === "user").pop();
+      const lastUserText = (lastUserMsg?.parts || []).map(p => p.text || "").join(" ").toLowerCase();
 
-      const allColors = [
-        "pearl white", "matte black", "matte red", "sunflower",
-        "ocean blue", "british green", "burnt orange", "royal purple",
-        "gunmetal", "rose gold",
-      ];
+      const colorWords = ["black", "white", "red", "blue", "green", "orange", "purple", "grey", "gray", "gold", "silver", "pink", "yellow", "brown", "bronze", "teal", "navy", "maroon", "cream", "beige", "charcoal"];
       const allFinishes = ["gloss", "matte", "satin", "chrome"];
 
-      // Check if user mentioned a color
       let detectedColor = null;
       let detectedFinish = "Gloss";
 
-      for (const c of allColors) {
-        if (lastUserText.includes(c)) { detectedColor = c; break; }
-      }
-
-      // Check for color words even if not in preset list
-      if (!detectedColor) {
-        const colorWords = ["black", "white", "red", "blue", "green", "orange", "purple", "grey", "gray", "gold", "silver", "pink", "yellow", "brown", "bronze", "teal", "navy", "maroon", "cream", "beige", "charcoal"];
-        for (const w of colorWords) {
-          if (lastUserText.includes(w)) {
-            // Extract the color phrase from the reply or user message
-            detectedColor = lastUserText.replace(/i('d| would) (like|want|love) (to see |to try |)?(a |it in |)/gi, "").trim();
-            break;
-          }
+      for (const w of colorWords) {
+        if (lastUserText.includes(w)) {
+          detectedColor = lastUserText.replace(/i('d| would) (like|want|love) (to see |to try |)?(a |it in |)/gi, "").trim();
+          break;
         }
       }
 
@@ -157,10 +132,8 @@ module.exports = async function handler(req, res) {
       }
 
       if (detectedColor) {
-        // Capitalize color name
         const colorName = detectedColor.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         actions.push({ type: "recolor_car", colorName, finishName: detectedFinish });
-        console.log("Fallback recolor detected:", colorName, detectedFinish);
       }
     }
 

@@ -1,5 +1,11 @@
-const { GoogleGenAI } = require("@google/genai");
+const OpenAI = require("openai");
 const { generateAllImages } = require("./_generate-images-openai");
+
+function getClient() {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+  return new OpenAI({ apiKey });
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -11,22 +17,19 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Missing photo or mimeType" });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
-  }
-
   try {
-    // Step 1: Analyze the uploaded photo with Gemini (fast + cheap for text analysis)
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const analysisResult = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
+    const client = getClient();
+
+    // Step 1: Analyze the uploaded photo with GPT-4o
+    const analysisResult = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
         {
           role: "user",
-          parts: [
-            { inlineData: { data: photo, mimeType } },
+          content: [
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${photo}` } },
             {
+              type: "text",
               text: `Analyze this car photo and provide a detailed description. Be specific and concise. Include:
 
 1. Make and model (e.g. "2024 BMW M4 Competition")
@@ -41,13 +44,13 @@ Respond with ONLY a single paragraph description, no bullet points or labels. Be
           ],
         },
       ],
+      max_tokens: 300,
     });
 
-    const carDescription =
-      analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "a car";
+    const carDescription = analysisResult.choices?.[0]?.message?.content || "a car";
     console.log("Car identified as:", carDescription);
 
-    // Step 2: Generate 6 showroom views with OpenAI GPT-Image-1.5
+    // Step 2: Generate showroom views with OpenAI GPT-Image-1.5
     const userPhoto = { data: photo, mimeType };
     const images = await generateAllImages(
       `Generate a photorealistic showroom image of the following car:\n\n${carDescription}\n\nThe car must match the description exactly — same make, model, color, wheels, and all details.`,
@@ -60,5 +63,3 @@ Respond with ONLY a single paragraph description, no bullet points or labels. Be
     res.status(500).json({ error: err.message || "Generation failed" });
   }
 };
-
-module.exports.config = { maxDuration: 60 };
