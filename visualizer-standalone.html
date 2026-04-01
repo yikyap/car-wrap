@@ -26,7 +26,8 @@ h1 { font-size: 22px; font-weight: 500; }
 .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; gap: 16px; backdrop-filter: blur(6px); }
 .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: #999; text-align: center; line-height: 1.5; }
+.loading-text { font-size: 13px; color: #999; text-align: center; line-height: 1.5; animation: loadPulse 2s ease-in-out infinite; }
+@keyframes loadPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 .loading-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.08); z-index: 25; }
 .loading-progress-bar { height: 100%; background: linear-gradient(90deg, #D4A832, #E0BE55); width: 0%; transition: width 0.6s ease; border-radius: 0 2px 2px 0; }
 .loading-step { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; }
@@ -391,17 +392,41 @@ function resizeImage(file, maxSize) {
 
 function parseError(text, fallback) { try { return JSON.parse(text).error || fallback; } catch(e) { return fallback; } }
 
+let _loadingTimer = null;
+let _loadingStart = 0;
+let _gameTimeout = null;
+
 function showLoading(msg) {
   let ov = document.getElementById('loading-overlay');
   if (!ov) {
     ov = document.createElement('div'); ov.id = 'loading-overlay'; ov.className = 'loading-overlay';
-    ov.innerHTML = '<div class="loading-progress"><div class="loading-progress-bar" id="loading-bar"></div></div><div class="spinner"></div><div class="loading-text" id="loading-text"></div><div class="loading-step" id="loading-step"></div>';
+    ov.innerHTML = '<div class="loading-progress"><div class="loading-progress-bar" id="loading-bar"></div></div><div class="spinner"></div><div class="loading-text" id="loading-text"></div><div class="loading-step" id="loading-step"></div><div class="loading-timer" id="loading-timer" style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:8px"></div><div id="loading-game" style="margin-top:16px"></div>';
     carouselEl.appendChild(ov);
   }
   ov.style.display = 'flex';
   document.getElementById('loading-text').textContent = msg || 'Generating...';
   document.getElementById('loading-step').textContent = '';
+  document.getElementById('loading-game').innerHTML = '';
   setLoadingProgress(0);
+  _loadingStart = Date.now();
+  if (_loadingTimer) clearInterval(_loadingTimer);
+  if (_gameTimeout) clearTimeout(_gameTimeout);
+  const timerEl = document.getElementById('loading-timer');
+  if (timerEl) timerEl.textContent = '';
+  _loadingTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - _loadingStart) / 1000);
+    if (timerEl && elapsed >= 5) {
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      timerEl.textContent = m > 0 ? `${m}m ${s}s elapsed` : `${s}s elapsed`;
+    }
+  }, 1000);
+  _gameTimeout = setTimeout(() => {
+    const gameEl = document.getElementById('loading-game');
+    if (gameEl && document.getElementById('loading-overlay')?.style.display !== 'none') {
+      showGameOffer(gameEl);
+    }
+  }, 4000);
 }
 function setLoadingProgress(pct, stepText) {
   const bar = document.getElementById('loading-bar');
@@ -415,7 +440,101 @@ function updateLoadingText(msg) {
   const el = document.getElementById('loading-text');
   if (el) el.textContent = msg;
 }
-function hideLoading() { const ov = document.getElementById('loading-overlay'); if (ov) ov.style.display = 'none'; }
+function hideLoading() {
+  const ov = document.getElementById('loading-overlay');
+  if (ov) ov.style.display = 'none';
+  if (_loadingTimer) { clearInterval(_loadingTimer); _loadingTimer = null; }
+  if (_gameTimeout) { clearTimeout(_gameTimeout); _gameTimeout = null; }
+}
+
+function showGameOffer(container) {
+  container.innerHTML = `
+    <div style="text-align:center;animation:swatchReveal 0.4s ease forwards;opacity:0">
+      <div style="font-size:12px;color:#777;margin-bottom:10px">Want to play while you wait?</div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button onclick="startTicTacToe(this.closest('#loading-game'))" style="padding:8px 16px;border-radius:8px;background:#222;border:1px solid #444;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s">&#10060; Tic Tac Toe</button>
+        <button onclick="startRPS(this.closest('#loading-game'))" style="padding:8px 16px;border-radius:8px;background:#222;border:1px solid #444;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s">&#9994; Rock Paper Scissors</button>
+      </div>
+    </div>`;
+}
+
+function startTicTacToe(container) {
+  let board = Array(9).fill('');
+  let turn = 'X';
+  let gameOver = false;
+  let score = { player: 0, ai: 0 };
+  function render() {
+    const cells = board.map((v, i) =>
+      `<div onclick="tttMove(${i})" style="width:48px;height:48px;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;cursor:${!v && !gameOver ? 'pointer' : 'default'};color:${v === 'X' ? '#D4A832' : '#fff'};transition:all 0.1s;border-radius:4px;background:${!v && !gameOver ? 'rgba(255,255,255,0.03)' : 'transparent'}">${v}</div>`
+    ).join('');
+    container.innerHTML = `
+      <div style="text-align:center">
+        <div style="font-size:11px;color:#666;margin-bottom:6px">You: ${score.player} — AI: ${score.ai}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,48px);gap:2px;justify-content:center;margin-bottom:8px">${cells}</div>
+        <div id="ttt-status" style="font-size:12px;color:#999;min-height:20px">${gameOver ? '' : (turn === 'X' ? 'Your turn' : 'AI thinking...')}</div>
+        ${gameOver ? '<button onclick="startTicTacToe(this.closest(\'#loading-game\'))" style="margin-top:6px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>' : ''}
+      </div>`;
+  }
+  function checkWin(b, p) {
+    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    return wins.some(w => w.every(i => b[i] === p));
+  }
+  function aiMove() {
+    const empty = board.map((v,i) => v === '' ? i : -1).filter(i => i >= 0);
+    for (const i of empty) { board[i] = 'O'; if (checkWin(board, 'O')) { board[i] = ''; return i; } board[i] = ''; }
+    for (const i of empty) { board[i] = 'X'; if (checkWin(board, 'X')) { board[i] = ''; return i; } board[i] = ''; }
+    if (empty.includes(4)) return 4;
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+  window.tttMove = (i) => {
+    if (board[i] || gameOver || turn !== 'X') return;
+    board[i] = 'X';
+    if (checkWin(board, 'X')) { gameOver = true; score.player++; render(); document.getElementById('ttt-status').textContent = 'You win!'; return; }
+    if (board.every(c => c)) { gameOver = true; render(); document.getElementById('ttt-status').textContent = 'Draw!'; return; }
+    turn = 'O'; render();
+    setTimeout(() => {
+      const m = aiMove(); if (m !== undefined) board[m] = 'O';
+      if (checkWin(board, 'O')) { gameOver = true; score.ai++; render(); document.getElementById('ttt-status').textContent = 'AI wins!'; return; }
+      if (board.every(c => c)) { gameOver = true; render(); document.getElementById('ttt-status').textContent = 'Draw!'; return; }
+      turn = 'X'; render();
+    }, 400);
+  };
+  render();
+}
+
+function startRPS(container) {
+  let score = { player: 0, ai: 0 };
+  let round = 0;
+  function render(result) {
+    container.innerHTML = `
+      <div style="text-align:center">
+        <div style="font-size:11px;color:#666;margin-bottom:8px">You: ${score.player} — AI: ${score.ai} (Best of 5)</div>
+        ${result ? `<div style="font-size:13px;color:#ccc;margin-bottom:10px">${result}</div>` : '<div style="font-size:12px;color:#999;margin-bottom:10px">Pick your move:</div>'}
+        <div style="display:flex;gap:10px;justify-content:center">
+          ${['🪨 Rock','📄 Paper','✂️ Scissors'].map(m => {
+            const v = m.split(' ')[1];
+            return `<button onclick="rpsPlay('${v}')" style="padding:10px 14px;border-radius:10px;background:#222;border:1px solid #444;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;transition:all 0.15s;min-width:70px" onmouseover="this.style.borderColor='#888'" onmouseout="this.style.borderColor='#444'">${m}</button>`;
+          }).join('')}
+        </div>
+        ${round >= 5 || score.player >= 3 || score.ai >= 3 ? `<button onclick="startRPS(this.closest('#loading-game'))" style="margin-top:10px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>` : ''}
+      </div>`;
+  }
+  window.rpsPlay = (choice) => {
+    if (round >= 5 || score.player >= 3 || score.ai >= 3) return;
+    const moves = ['Rock', 'Paper', 'Scissors'];
+    const ai = moves[Math.floor(Math.random() * 3)];
+    const icons = { Rock: '🪨', Paper: '📄', Scissors: '✂️' };
+    round++;
+    let msg;
+    if (choice === ai) { msg = `${icons[choice]} vs ${icons[ai]} — Draw!`; }
+    else if ((choice === 'Rock' && ai === 'Scissors') || (choice === 'Paper' && ai === 'Rock') || (choice === 'Scissors' && ai === 'Paper')) { score.player++; msg = `${icons[choice]} vs ${icons[ai]} — You win!`; }
+    else { score.ai++; msg = `${icons[choice]} vs ${icons[ai]} — AI wins!`; }
+    if (score.player >= 3) msg += ' 🎉 You won the match!';
+    if (score.ai >= 3) msg += ' AI won the match!';
+    render(msg);
+  };
+  render();
+}
 
 function displayGeneratedImages(images) {
   return Promise.all(images.map(img => new Promise(resolve => {
@@ -498,7 +617,7 @@ async function generateFromDescription(carDesc) {
     } catch (e) { console.log('Cache lookup failed, falling back to generation:', e); }
   }
 
-  showLoading('Setting up the studio...');
+  showLoading('Generating your car — this can take 1–2 minutes...');
   setLoadingProgress(5, 'Step 1 of 3');
   try {
     // Step 1: Generate hero image

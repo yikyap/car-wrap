@@ -18,52 +18,45 @@ function normalize(str) {
 
 async function lookupCache({ year, make, model, body_color, wheel_color, trim_color, tint_level }) {
   const sb = getClient();
-  let query = sb
-    .from("visualizer_cache")
-    .select("id, images, confirmed, rejected")
-    .eq("year", normalize(year))
-    .eq("make", normalize(make))
-    .eq("model", normalize(model))
-    .eq("body_color", normalize(body_color));
 
-  if (wheel_color) {
-    query = query.eq("wheel_color", normalize(wheel_color));
-  } else {
-    query = query.is("wheel_color", null);
+  // Try exact match first, then progressively relax constraints
+  const searches = [
+    // 1. Exact match on all fields
+    () => {
+      let q = sb.from("visualizer_cache").select("id, images, confirmed, rejected")
+        .eq("year", normalize(year)).eq("make", normalize(make))
+        .eq("model", normalize(model)).eq("body_color", normalize(body_color));
+      if (wheel_color) q = q.eq("wheel_color", normalize(wheel_color)); else q = q.is("wheel_color", null);
+      if (trim_color) q = q.eq("trim_color", normalize(trim_color)); else q = q.is("trim_color", null);
+      if (tint_level) q = q.eq("tint_level", normalize(tint_level)); else q = q.is("tint_level", null);
+      return q.order("confirmed", { ascending: false }).order("rejected", { ascending: true }).limit(5);
+    },
+    // 2. Match year/make/model/body_color only (ignore wheel, trim, tint)
+    () => sb.from("visualizer_cache").select("id, images, confirmed, rejected")
+      .eq("year", normalize(year)).eq("make", normalize(make))
+      .eq("model", normalize(model)).eq("body_color", normalize(body_color))
+      .order("confirmed", { ascending: false }).order("rejected", { ascending: true }).limit(5),
+    // 3. Match make/model/body_color only (any year)
+    () => sb.from("visualizer_cache").select("id, images, confirmed, rejected")
+      .eq("make", normalize(make)).eq("model", normalize(model))
+      .eq("body_color", normalize(body_color))
+      .order("confirmed", { ascending: false }).order("rejected", { ascending: true }).limit(5),
+  ];
+
+  for (const search of searches) {
+    const { data, error } = await search();
+    if (error || !data || data.length === 0) continue;
+
+    const good = data.filter(d => !(d.rejected >= 3 && d.confirmed === 0));
+    if (good.length === 0) continue;
+
+    const pick = good[0];
+    // Increment hit_count (fire-and-forget)
+    sb.from("visualizer_cache").update({ hit_count: (pick.hit_count || 0) + 1 }).eq("id", pick.id).then(() => {});
+    return { images: pick.images, cacheId: pick.id };
   }
 
-  if (trim_color) {
-    query = query.eq("trim_color", normalize(trim_color));
-  } else {
-    query = query.is("trim_color", null);
-  }
-
-  if (tint_level) {
-    query = query.eq("tint_level", normalize(tint_level));
-  } else {
-    query = query.is("tint_level", null);
-  }
-
-  // Filter out entries that have been rejected 3+ times with 0 confirmations
-  // Order by best ratio: confirmed desc, rejected asc
-  const { data, error } = await query
-    .order("confirmed", { ascending: false })
-    .order("rejected", { ascending: true })
-    .limit(5);
-
-  if (error || !data || data.length === 0) return null;
-
-  // Filter out bad entries (3+ rejections, 0 confirmations)
-  const good = data.filter(d => !(d.rejected >= 3 && d.confirmed === 0));
-  if (good.length === 0) return null;
-
-  // Pick the best one (highest confirmed, lowest rejected)
-  const pick = good[0];
-
-  // Increment hit_count (fire-and-forget)
-  sb.from("visualizer_cache").update({ hit_count: (pick.hit_count || 0) + 1 }).eq("id", pick.id).then(() => {});
-
-  return { images: pick.images, cacheId: pick.id };
+  return null;
 }
 
 async function confirmCache(id) {
