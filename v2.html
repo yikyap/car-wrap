@@ -454,13 +454,19 @@ function hideLoading() {
 }
 
 // === Mini-games while loading ===
+const _gameBtnStyle = 'padding:8px 16px;border-radius:8px;background:#222;border:1px solid #444;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s';
+const _switchBtn = '<button onclick="showGameOffer(this.closest(\'#loading-game\'))" style="margin-top:8px;padding:5px 12px;border-radius:6px;background:transparent;border:1px solid #333;color:#666;font-size:10px;cursor:pointer;font-family:inherit">Switch Game</button>';
+
 function showGameOffer(container) {
   container.innerHTML = `
     <div style="text-align:center;animation:swatchReveal 0.4s ease forwards;opacity:0">
-      <div style="font-size:12px;color:#777;margin-bottom:10px">Want to play while you wait?</div>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button onclick="startTicTacToe(this.closest('#loading-game'))" style="padding:8px 16px;border-radius:8px;background:#222;border:1px solid #444;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s">&#10060; Tic Tac Toe</button>
-        <button onclick="startRPS(this.closest('#loading-game'))" style="padding:8px 16px;border-radius:8px;background:#222;border:1px solid #444;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s">&#9994; Rock Paper Scissors</button>
+      <div style="font-size:12px;color:#777;margin-bottom:10px">Play a game while you wait!</div>
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        <button onclick="startTicTacToe(this.closest('#loading-game'))" style="${_gameBtnStyle}">&#10060; Tic Tac Toe</button>
+        <button onclick="startRPS(this.closest('#loading-game'))" style="${_gameBtnStyle}">&#9994; Rock Paper Scissors</button>
+        <button onclick="startMemory(this.closest('#loading-game'))" style="${_gameBtnStyle}">&#x1f0cf; Memory</button>
+        <button onclick="startSpeedTap(this.closest('#loading-game'))" style="${_gameBtnStyle}">&#x26a1; Speed Tap</button>
+        <button onclick="startColorMatch(this.closest('#loading-game'))" style="${_gameBtnStyle}">&#x1f3a8; Color Match</button>
       </div>
     </div>`;
 }
@@ -468,99 +474,176 @@ function showGameOffer(container) {
 // -- Tic Tac Toe --
 function startTicTacToe(container) {
   let board = Array(9).fill('');
-  let turn = 'X'; // player is X
+  let turn = 'X';
   let gameOver = false;
   let score = { player: 0, ai: 0 };
-
   function render() {
     const cells = board.map((v, i) =>
-      `<div onclick="tttMove(${i})" style="width:48px;height:48px;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;cursor:${!v && !gameOver ? 'pointer' : 'default'};color:${v === 'X' ? '#D4A832' : '#fff'};transition:all 0.1s;border-radius:4px;background:${!v && !gameOver ? 'rgba(255,255,255,0.03)' : 'transparent'}">${v}</div>`
+      `<div onclick="tttMove(${i})" style="width:48px;height:48px;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;cursor:${!v && !gameOver ? 'pointer' : 'default'};color:${v === 'X' ? '#D4A832' : '#fff'};border-radius:4px;background:${!v && !gameOver ? 'rgba(255,255,255,0.03)' : 'transparent'}">${v}</div>`
     ).join('');
-    container.innerHTML = `
-      <div style="text-align:center">
-        <div style="font-size:11px;color:#666;margin-bottom:6px">You: ${score.player} — AI: ${score.ai}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,48px);gap:2px;justify-content:center;margin-bottom:8px">${cells}</div>
-        <div id="ttt-status" style="font-size:12px;color:#999;min-height:20px">${gameOver ? '' : (turn === 'X' ? 'Your turn' : 'AI thinking...')}</div>
-        ${gameOver ? '<button onclick="startTicTacToe(this.closest(\'#loading-game\'))" style="margin-top:6px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>' : ''}
-      </div>`;
+    container.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;color:#666;margin-bottom:6px">You: ${score.player} — AI: ${score.ai}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,48px);gap:2px;justify-content:center;margin-bottom:8px">${cells}</div>
+      <div id="ttt-status" style="font-size:12px;color:#999;min-height:20px">${gameOver ? '' : (turn === 'X' ? 'Your turn' : 'AI thinking...')}</div>
+      ${gameOver ? `<button onclick="startTicTacToe(this.closest('#loading-game'))" style="margin-top:6px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>` : ''}
+      ${_switchBtn}
+    </div>`;
   }
-
-  function checkWin(b, p) {
-    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    return wins.some(w => w.every(i => b[i] === p));
-  }
-
+  function checkWin(b, p) { return [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].some(w => w.every(i => b[i] === p)); }
   function aiMove() {
-    // Try to win, then block, then center, then random
     const empty = board.map((v,i) => v === '' ? i : -1).filter(i => i >= 0);
     for (const i of empty) { board[i] = 'O'; if (checkWin(board, 'O')) { board[i] = ''; return i; } board[i] = ''; }
     for (const i of empty) { board[i] = 'X'; if (checkWin(board, 'X')) { board[i] = ''; return i; } board[i] = ''; }
     if (empty.includes(4)) return 4;
     return empty[Math.floor(Math.random() * empty.length)];
   }
-
   window.tttMove = (i) => {
     if (board[i] || gameOver || turn !== 'X') return;
     board[i] = 'X';
     if (checkWin(board, 'X')) { gameOver = true; score.player++; render(); document.getElementById('ttt-status').textContent = 'You win!'; return; }
     if (board.every(c => c)) { gameOver = true; render(); document.getElementById('ttt-status').textContent = 'Draw!'; return; }
-    turn = 'O';
-    render();
+    turn = 'O'; render();
     setTimeout(() => {
-      const m = aiMove();
-      if (m !== undefined) board[m] = 'O';
+      const m = aiMove(); if (m !== undefined) board[m] = 'O';
       if (checkWin(board, 'O')) { gameOver = true; score.ai++; render(); document.getElementById('ttt-status').textContent = 'AI wins!'; return; }
       if (board.every(c => c)) { gameOver = true; render(); document.getElementById('ttt-status').textContent = 'Draw!'; return; }
-      turn = 'X';
-      render();
+      turn = 'X'; render();
     }, 400);
   };
-
   render();
 }
 
 // -- Rock Paper Scissors --
 function startRPS(container) {
-  let score = { player: 0, ai: 0 };
-  let round = 0;
-
+  let score = { player: 0, ai: 0 }, round = 0;
   function render(result) {
-    container.innerHTML = `
-      <div style="text-align:center">
-        <div style="font-size:11px;color:#666;margin-bottom:8px">You: ${score.player} — AI: ${score.ai} (Best of 5)</div>
-        ${result ? `<div style="font-size:13px;color:#ccc;margin-bottom:10px">${result}</div>` : '<div style="font-size:12px;color:#999;margin-bottom:10px">Pick your move:</div>'}
-        <div style="display:flex;gap:10px;justify-content:center">
-          ${['🪨 Rock','📄 Paper','✂️ Scissors'].map(m => {
-            const v = m.split(' ')[1];
-            return `<button onclick="rpsPlay('${v}')" style="padding:10px 14px;border-radius:10px;background:#222;border:1px solid #444;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;transition:all 0.15s;min-width:70px" onmouseover="this.style.borderColor='#888'" onmouseout="this.style.borderColor='#444'">${m}</button>`;
-          }).join('')}
-        </div>
-        ${round >= 5 || score.player >= 3 || score.ai >= 3 ? `<button onclick="startRPS(this.closest('#loading-game'))" style="margin-top:10px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>` : ''}
-      </div>`;
+    const done = round >= 5 || score.player >= 3 || score.ai >= 3;
+    container.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;color:#666;margin-bottom:8px">You: ${score.player} — AI: ${score.ai} (Best of 5)</div>
+      ${result ? `<div style="font-size:13px;color:#ccc;margin-bottom:10px">${result}</div>` : '<div style="font-size:12px;color:#999;margin-bottom:10px">Pick your move:</div>'}
+      <div style="display:flex;gap:10px;justify-content:center">
+        ${['🪨 Rock','📄 Paper','✂️ Scissors'].map(m => `<button onclick="rpsPlay('${m.split(' ')[1]}')" style="padding:10px 14px;border-radius:10px;background:#222;border:1px solid #444;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;min-width:70px">${m}</button>`).join('')}
+      </div>
+      ${done ? `<button onclick="startRPS(this.closest('#loading-game'))" style="margin-top:8px;padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>` : ''}
+      ${_switchBtn}
+    </div>`;
   }
-
   window.rpsPlay = (choice) => {
     if (round >= 5 || score.player >= 3 || score.ai >= 3) return;
-    const moves = ['Rock', 'Paper', 'Scissors'];
-    const ai = moves[Math.floor(Math.random() * 3)];
-    const icons = { Rock: '🪨', Paper: '📄', Scissors: '✂️' };
-    round++;
+    const moves = ['Rock', 'Paper', 'Scissors'], ai = moves[Math.floor(Math.random() * 3)];
+    const ic = { Rock: '🪨', Paper: '📄', Scissors: '✂️' }; round++;
     let msg;
-    if (choice === ai) {
-      msg = `${icons[choice]} vs ${icons[ai]} — Draw!`;
-    } else if ((choice === 'Rock' && ai === 'Scissors') || (choice === 'Paper' && ai === 'Rock') || (choice === 'Scissors' && ai === 'Paper')) {
-      score.player++;
-      msg = `${icons[choice]} vs ${icons[ai]} — You win!`;
-    } else {
-      score.ai++;
-      msg = `${icons[choice]} vs ${icons[ai]} — AI wins!`;
-    }
-    if (score.player >= 3) msg += ' 🎉 You won the match!';
-    if (score.ai >= 3) msg += ' AI won the match!';
+    if (choice === ai) msg = `${ic[choice]} vs ${ic[ai]} — Draw!`;
+    else if ((choice === 'Rock' && ai === 'Scissors') || (choice === 'Paper' && ai === 'Rock') || (choice === 'Scissors' && ai === 'Paper')) { score.player++; msg = `${ic[choice]} vs ${ic[ai]} — You win!`; }
+    else { score.ai++; msg = `${ic[choice]} vs ${ic[ai]} — AI wins!`; }
+    if (score.player >= 3) msg += ' 🎉 You won!';
+    if (score.ai >= 3) msg += ' AI won!';
     render(msg);
   };
-
   render();
+}
+
+// -- Memory Cards --
+function startMemory(container) {
+  const emojis = ['🚗','🏎️','🔧','🎨','🛞','🔑','💨','⚡'];
+  let cards = [...emojis, ...emojis].sort(() => Math.random() - 0.5);
+  let flipped = [], matched = new Set(), moves = 0, busy = false;
+  function render() {
+    container.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;color:#666;margin-bottom:6px">Moves: ${moves} — Pairs: ${matched.size / 2}/${emojis.length}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,42px);gap:4px;justify-content:center;margin-bottom:8px">
+        ${cards.map((c, i) => {
+          const show = flipped.includes(i) || matched.has(i);
+          return `<div onclick="memFlip(${i})" style="width:42px;height:42px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:${show ? 'default' : 'pointer'};background:${matched.has(i) ? '#1a3a1a' : show ? '#333' : '#222'};border:1px solid ${matched.has(i) ? '#2a5a2a' : '#444'};transition:all 0.2s;user-select:none">${show ? c : '?'}</div>`;
+        }).join('')}
+      </div>
+      ${matched.size === cards.length ? `<div style="font-size:13px;color:#D4A832;margin-bottom:6px">🎉 You got all ${emojis.length} pairs in ${moves} moves!</div><button onclick="startMemory(this.closest('#loading-game'))" style="padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>` : ''}
+      ${_switchBtn}
+    </div>`;
+  }
+  window.memFlip = (i) => {
+    if (busy || flipped.includes(i) || matched.has(i) || flipped.length >= 2) return;
+    flipped.push(i); render();
+    if (flipped.length === 2) {
+      moves++; busy = true;
+      setTimeout(() => {
+        if (cards[flipped[0]] === cards[flipped[1]]) { matched.add(flipped[0]); matched.add(flipped[1]); }
+        flipped = []; busy = false; render();
+      }, 700);
+    }
+  };
+  render();
+}
+
+// -- Speed Tap --
+function startSpeedTap(container) {
+  let count = 0, timeLeft = 10, started = false, interval = null, best = parseInt(localStorage.getItem('speedTapBest') || '0');
+  function render() {
+    container.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;color:#666;margin-bottom:4px">${best > 0 ? `Best: ${best}` : 'Tap as fast as you can!'}</div>
+      <div style="font-size:32px;font-weight:700;color:#D4A832;margin-bottom:4px">${count}</div>
+      <div style="font-size:12px;color:#999;margin-bottom:8px">${timeLeft > 0 ? `${timeLeft}s left` : 'Time\'s up!'}</div>
+      ${timeLeft > 0 ? `<button onclick="speedTap()" style="width:120px;height:120px;border-radius:50%;background:#222;border:2px solid #D4A832;color:#fff;font-size:28px;cursor:pointer;transition:all 0.1s;user-select:none" onmousedown="this.style.transform='scale(0.92)'" onmouseup="this.style.transform='scale(1)'">${started ? '👆' : 'START'}</button>` : `<div style="font-size:14px;color:#ccc;margin-bottom:8px">${count > best ? '🎉 New record!' : 'Nice try!'}</div><button onclick="startSpeedTap(this.closest('#loading-game'))" style="padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Try Again</button>`}
+      ${_switchBtn}
+    </div>`;
+  }
+  window.speedTap = () => {
+    if (timeLeft <= 0) return;
+    if (!started) {
+      started = true;
+      interval = setInterval(() => { timeLeft--; if (timeLeft <= 0) { clearInterval(interval); if (count > best) { best = count; localStorage.setItem('speedTapBest', String(best)); } } render(); }, 1000);
+    }
+    count++; render();
+  };
+  render();
+}
+
+// -- Color Match (Stroop) --
+function startColorMatch(container) {
+  const colors = [
+    { name: 'Red', hex: '#ef4444' }, { name: 'Blue', hex: '#3b82f6' }, { name: 'Green', hex: '#22c55e' },
+    { name: 'Yellow', hex: '#eab308' }, { name: 'Purple', hex: '#a855f7' }, { name: 'Orange', hex: '#f97316' },
+  ];
+  let score = 0, round = 0, maxRounds = 10, current = null, timeLeft = 0, timer = null;
+  function nextRound() {
+    round++;
+    if (round > maxRounds) { clearInterval(timer); render(true); return; }
+    const textColor = colors[Math.floor(Math.random() * colors.length)];
+    let displayColor;
+    do { displayColor = colors[Math.floor(Math.random() * colors.length)]; } while (displayColor.name === textColor.name && Math.random() > 0.3);
+    current = { textColor, displayColor };
+    timeLeft = 3;
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => { timeLeft--; if (timeLeft <= 0) { clearInterval(timer); round++; if (round > maxRounds) { render(true); } else { nextRound(); } } render(); }, 1000);
+    render();
+  }
+  function render(done) {
+    if (done) {
+      container.innerHTML = `<div style="text-align:center">
+        <div style="font-size:14px;color:#ccc;margin-bottom:4px">${score >= 7 ? '🎉 Amazing!' : score >= 4 ? 'Not bad!' : 'Keep practicing!'}</div>
+        <div style="font-size:24px;font-weight:700;color:#D4A832;margin-bottom:8px">${score}/${maxRounds}</div>
+        <button onclick="startColorMatch(this.closest('#loading-game'))" style="padding:6px 14px;border-radius:6px;background:#333;border:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Play Again</button>
+        ${_switchBtn}
+      </div>`;
+      return;
+    }
+    container.innerHTML = `<div style="text-align:center">
+      <div style="font-size:11px;color:#666;margin-bottom:4px">Score: ${score} — Round ${round}/${maxRounds}</div>
+      <div style="font-size:11px;color:#555;margin-bottom:8px">Tap the <u>color</u> of the text, not the word!</div>
+      ${current ? `<div style="font-size:28px;font-weight:700;margin-bottom:12px;color:${current.displayColor.hex}">${current.textColor.name}</div>` : ''}
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        ${colors.map(c => `<button onclick="colorPick('${c.name}')" style="width:40px;height:40px;border-radius:8px;background:${c.hex};border:2px solid transparent;cursor:pointer;transition:all 0.1s" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" title="${c.name}"></button>`).join('')}
+      </div>
+      ${_switchBtn}
+    </div>`;
+  }
+  window.colorPick = (name) => {
+    if (!current || round > maxRounds) return;
+    if (name === current.displayColor.name) score++;
+    clearInterval(timer);
+    nextRound();
+  };
+  nextRound();
 }
 
 function displayGeneratedImages(images) {
