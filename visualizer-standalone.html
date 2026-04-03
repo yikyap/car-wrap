@@ -950,7 +950,24 @@ function addRecolorConfirm(text, colorName, finishName) {
         chatMessages.appendChild(msg);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       } else {
-        addMessageWithPalette('Here it is! Want to try another color?');
+        const msg = document.createElement('div');
+        msg.className = 'msg bot';
+        msg.textContent = 'Here it is! Happy with this color?';
+        const mbtns = document.createElement('div');
+        mbtns.className = 'confirm-btns';
+        const yBtn = document.createElement('button');
+        yBtn.className = 'confirm-btn yes';
+        yBtn.textContent = 'Looks perfect!';
+        yBtn.onclick = () => { mbtns.remove(); completedServices.add('wrap'); showFinalConfirmation(); };
+        const nBtn = document.createElement('button');
+        nBtn.className = 'confirm-btn no';
+        nBtn.textContent = 'Try another color';
+        nBtn.onclick = () => { mbtns.remove(); addMessageWithPalette('Pick another color:'); };
+        mbtns.appendChild(yBtn);
+        mbtns.appendChild(nBtn);
+        msg.appendChild(mbtns);
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       }
       chatHistory.push({ role: 'model', parts: [{ text: 'Here it is!' }] });
     } catch (err) {
